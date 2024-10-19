@@ -494,6 +494,13 @@ def no_path_access(monkeypatch):
     monkeypatch.setattr(os, "access", _can_access)
 
 
+@pytest.fixture(scope="function", autouse=True)
+def print_all_logs(monkeypatch):
+    import ramble.util.logger
+
+    monkeypatch.setattr(ramble.util.logger.logger, "msg", ramble.util.logger.logger.all_msg)
+
+
 ##########
 # Fake archives and repositories
 ##########
