@@ -798,9 +798,12 @@ class Expander:
     def _eval_comparisons(self, node):
         """Handle a comparison node in the ast"""
 
-        # Extract In nodes, and call their helper
-        if len(node.ops) == 1 and isinstance(node.ops[0], ast.In):
-            return self._eval_comp_in(node)
+        # Extract In or NotIn nodes, and call their helper
+        if len(node.ops) == 1 and isinstance(node.ops[0], (ast.In, ast.NotIn)):
+            is_in = self._eval_comp_in(node)
+            if isinstance(node.ops[0], ast.NotIn):
+                return not is_in
+            return is_in
 
         if len(node.ops) == 1 and isinstance(node.ops[0], ast.Is):
             raise RambleSyntaxError("Encountered unsupported operator `is`")
@@ -830,7 +833,7 @@ class Expander:
             raise SyntaxError("Unsupported binary comparison operator")
 
     def _eval_comp_in(self, node):
-        """Handle in nodes in the ast
+        """Handle in node in the ast
 
         Perform extraction of `<variable> in <experiment>` syntax.
         Raises an exception if the experiment does not exist.
