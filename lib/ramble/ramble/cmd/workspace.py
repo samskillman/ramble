@@ -588,10 +588,17 @@ def workspace_push_to_cache_setup_parser(subparser):
 
 def workspace_info_setup_parser(subparser):
     """Information about a workspace"""
-    subparser.add_argument(
+    software_opts = subparser.add_mutually_exclusive_group()
+    software_opts.add_argument(
         "--software",
         action="store_true",
-        help="If set, software stack information will be printed",
+        help="If set, used software stack information will be printed",
+    )
+
+    software_opts.add_argument(
+        "--all-software",
+        action="store_true",
+        help="If set, all software stack information will be printed",
     )
 
     subparser.add_argument(
@@ -785,11 +792,16 @@ def workspace_info(args):
             colify(all_pipelines[pipeline], indent=4)
 
     # Print software stack information
-    if args.software:
+    if args.software or args.all_software:
         color.cprint("")
         #  software_environments.print_environments(verbosity=args.verbose)
         color.cprint(rucolor.section_title("Software Stack:"))
-        color.cprint(software_environments.info(verbosity=args.verbose, indent=4, color_level=1))
+        only_used_software = args.software
+        color.cprint(
+            software_environments.info(
+                verbosity=args.verbose, indent=4, color_level=1, only_used=only_used_software
+            )
+        )
 
 
 #

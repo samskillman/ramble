@@ -21,6 +21,8 @@ import ramble.util.matrices
 import ramble.util.colors as rucolor
 from ramble.package_manager import PackageManagerBase
 
+SUB_INDENT = 2
+
 
 def _get_spec(pkg_info: dict, spec_name: str, prefix: str, default=None) -> str:
     return pkg_info.get(f"{prefix}_{spec_name}", pkg_info.get(spec_name, default))
@@ -71,12 +73,16 @@ class SoftwarePackage:
 
         return ""
 
-    def info(self, indent: int = 0, verbosity: int = 0, color_level: int = 0):
+    def info(
+        self, indent: int = 0, verbosity: int = 0, color_level: int = 0, only_used: bool = True
+    ):
         """String representation of package information
 
         Args:
             indent (int): Number of spaces to indent lines with
             verbosity (int): Verbosity level
+            color_level (int): Nested level for coloring
+            only_used (bool): Whether to only track used info (True) or all info (False)
 
         Returns:
             (str): String representation of this package
@@ -84,6 +90,7 @@ class SoftwarePackage:
 
         indentation = " " * indent
         color = rucolor.level_func(color_level)
+
         out_str = color(f"{indentation}{self._package_type} package: {self.name}\n")
         return out_str
 
@@ -166,24 +173,28 @@ class RenderedPackage(SoftwarePackage):
 
         return out_str
 
-    def info(self, indent: int = 0, verbosity: int = 0, color_level: int = 0):
+    def info(
+        self, indent: int = 0, verbosity: int = 0, color_level: int = 0, only_used: bool = True
+    ):
         """String representation of package information
 
         Args:
             indent (int): Number of spaces to indent lines with
             verbosity (int): Verbosity level
+            color_level (int): Nested level for coloring
+            only_used (bool): Whether to only track used info (True) or all info (False)
 
         Returns:
             (str): String representation of this package
         """
 
-        indentation = " " * indent
-        out_str = super().info(indent, verbosity, color_level)
-        out_str += f'{indentation}    Spec: {self.spec.replace("@", "@@")}\n'
+        indentation = " " * (indent + SUB_INDENT)
+        out_str = super().info(indent, verbosity, color_level, only_used)
+        out_str += f'{indentation}Spec: {self.spec.replace("@", "@@")}\n'
         if self.compiler:
-            out_str += f"{indentation}    Compiler: {self.compiler}\n"
+            out_str += f"{indentation}Compiler: {self.compiler}\n"
         if self.compiler_spec:
-            out_str += f'{indentation}    Compiler Spec: {self.compiler_spec.replace("@", "@@")}\n'
+            out_str += f'{indentation}Compiler Spec: {self.compiler_spec.replace("@", "@@")}\n'
         return out_str
 
     def __eq__(self, other):
@@ -209,24 +220,44 @@ class TemplatePackage(SoftwarePackage):
         self._rendered_packages = defaultdict(dict)
         self._package_type = "Template"
 
-    def info(self, indent: int = 0, verbosity: int = 0, color_level: int = 0):
+    def info(
+        self, indent: int = 0, verbosity: int = 0, color_level: int = 0, only_used: bool = True
+    ):
         """String representation of package information
 
         Args:
             indent (int): Number of spaces to indent lines with
             verbosity (int): Verbosity level
+            color_level (int): Nested level for coloring
+            only_used (bool): Whether to only track used info (True) or all info (False)
 
         Returns:
             (str): String representation of this package
         """
 
-        out_str = super().info(indent, verbosity, color_level)
-        new_indent = indent + 4
-        for pkgs in self._rendered_packages.values():
+        out_str = ""
+        pkg_man_indent = indent + SUB_INDENT
+        indentation = " " * pkg_man_indent
+        color = rucolor.level_func(color_level + 1)
+        for pkg_man, pkgs in self._rendered_packages.items():
+            if pkgs:
+                out_str += color(f"{indentation}{pkg_man} packages:\n")
+
             for pkg in pkgs.values():
                 out_str += pkg.info(
-                    indent=new_indent, verbosity=verbosity, color_level=color_level + 1
+                    indent=pkg_man_indent + SUB_INDENT,
+                    verbosity=verbosity,
+                    color_level=color_level + 2,
+                    only_used=only_used,
                 )
+
+        if out_str == "" and not only_used:
+            indentation = " " * (indent + SUB_INDENT)
+            out_str = f"{indentation}No rendered packages\n"
+
+        # If there are any rendered packages, prepend the header
+        if out_str != "" or not only_used:
+            out_str = super().info(indent, verbosity, color_level, only_used=only_used) + out_str
         return out_str
 
     def render_package(self, expander: object, package_manager: PackageManagerBase):
@@ -308,12 +339,16 @@ class SoftwareEnvironment:
         self._packages = []
         self._environment_type = "Base"
 
-    def info(self, indent: int = 0, verbosity: int = 0, color_level: int = 0):
+    def info(
+        self, indent: int = 0, verbosity: int = 0, color_level: int = 0, only_used: bool = True
+    ):
         """Software environment information
 
         Args:
             indent (int): Number of spaces to inject as indentation
             verbosity (int): Verbosity level
+            color_level (int): Nested level for coloring
+            only_used (bool): Whether to only track used info (True) or all info (False)
 
         Returns:
             (str): information of this environment
@@ -322,12 +357,16 @@ class SoftwareEnvironment:
         indentation = " " * indent
         color = rucolor.level_func(color_level)
         out_str = color(f"{indentation}{self._environment_type} environment: {self.name}\n")
-        out_str += f"{indentation}    Packages:\n"
+
+        if self._packages:
+            indentation = " " * (indent + SUB_INDENT)
+            out_str += f"{indentation}Packages:\n"
+
         for pkg in self._packages:
             if verbosity >= 1:
-                out_str += f'{indentation}    - {pkg.name} = {pkg.spec_str().replace("@", "@@")}\n'
+                out_str += f'{indentation}- {pkg.name} = {pkg.spec_str().replace("@", "@@")}\n'
             else:
-                out_str += f"{indentation}    - {pkg.name}\n"
+                out_str += f"{indentation}- {pkg.name}\n"
         return out_str
 
     def __str__(self):
@@ -422,21 +461,41 @@ class TemplateEnvironment(SoftwareEnvironment):
     def add_package_name(self, package: str = ""):
         self._package_names.add(package)
 
-    def info(self, indent: int = 0, verbosity: int = 0, color_level: int = 0):
+    def info(
+        self, indent: int = 0, verbosity: int = 0, color_level: int = 0, only_used: bool = True
+    ):
         """Software environment information
 
         Args:
             indent (int): Number of spaces to inject as indentation
             verbosity (int): Verbosity level
+            color_level (int): Nested level for coloring
+            only_used (bool): Whether to only track used info (True) or all info (False)
 
         Returns:
             (str): information of this environment
         """
-        out_str = super().info(indent, verbosity, color_level=color_level)
-        new_indent = indent + 4
-        for envs in self._rendered_environments.values():
-            for env in envs.values():
-                out_str += env.info(new_indent, verbosity, color_level=color_level + 1)
+        out_str = ""
+        if self._rendered_environments:
+            for envs in self._rendered_environments.values():
+                for env in envs.values():
+                    out_str += env.info(
+                        indent + SUB_INDENT,
+                        verbosity,
+                        color_level=color_level + 1,
+                        only_used=only_used,
+                    )
+        elif not only_used:
+            indentation = " " * (indent + SUB_INDENT)
+            out_str += f"{indentation}No rendered environments\n"
+
+        # If there are rendered environments, prepend the header
+        if out_str != "" or not only_used:
+            out_str = (
+                super().info(indent, verbosity, color_level=color_level, only_used=only_used)
+                + out_str
+            )
+
         return out_str
 
     def __str__(self):
@@ -546,21 +605,29 @@ class SoftwareEnvironments:
 
         self._define_templates()
 
-    def info(self, indent: int = 0, verbosity: int = 0, color_level: int = 0):
+    def info(
+        self, indent: int = 0, verbosity: int = 0, color_level: int = 0, only_used: bool = True
+    ):
         """Information for all packages and environments
 
         Args:
             indent (int): Number of spaces to indent lines with
             verbosity (int): Verbosity level
+            color_level (int): Nested level for coloring
+            only_used (bool): Whether to only track used info (True) or all info (False)
 
         Returns:
             (str): Representation of all packages and environments
         """
         out_str = ""
         for pkg in self._package_templates.values():
-            out_str += pkg.info(indent, verbosity=verbosity, color_level=color_level)
+            out_str += pkg.info(
+                indent, verbosity=verbosity, color_level=color_level, only_used=only_used
+            )
         for env in self._environment_templates.values():
-            out_str += env.info(indent, verbosity=verbosity, color_level=color_level)
+            out_str += env.info(
+                indent, verbosity=verbosity, color_level=color_level, only_used=only_used
+            )
         return out_str
 
     def unused_environments(self):
