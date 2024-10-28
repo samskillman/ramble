@@ -258,6 +258,10 @@ class PyxisEnroot(BasicModifier):
             )
             container_path = self.expander.expand_var_name("container_path")
 
+            if not os.path.exists(container_extract_dir):
+                if not workspace.dry_run:
+                    fs.mkdirp(container_extract_dir)
+
             unsquash_args = [
                 "-f",
                 "-dest",
