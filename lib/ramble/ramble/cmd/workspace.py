@@ -1254,7 +1254,6 @@ def workspace_manage_software(args):
             args.remove,
             args.overwrite,
         )
-        logger.all_msg("Need to manipulate package definitions")
 
     if args.environment_name:
         ws.manage_environments(
