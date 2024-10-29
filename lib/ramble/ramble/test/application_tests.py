@@ -325,7 +325,7 @@ def test_set_input_path(mutable_mock_apps_repo):
 
     executable_application_instance._set_input_path()
 
-    default_answer = "/workspace/inputs/bar/test_wl2/input"
+    default_answer = "/workspace/inputs/bar/test_wl2/test_file.log"
 
     assert executable_application_instance.variables["input"] == default_answer
 
@@ -349,8 +349,8 @@ def test_set_input_path_multi_input(mutable_mock_apps_repo):
 
     executable_application_instance._set_input_path()
 
-    input1_path = "/workspace/inputs/bar/test_wl2/test-input1"
-    input2_path = "/workspace/inputs/bar/test_wl2/test-input2"
+    input1_path = "/workspace/inputs/bar/test_wl2/input1"
+    input2_path = "/workspace/inputs/bar/test_wl2/input2"
     input3_path = "/workspace/inputs/bar/test_wl2/input3.txt"
 
     assert executable_application_instance.variables["test-input1"] == input1_path
