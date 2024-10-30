@@ -928,6 +928,10 @@ ramble:
         software_dict = self.get_software_dict().copy()
 
         environments = software_dict[namespace.environments]
+        # Ensure package dict is an syaml_dict, for formatting
+        if not environments:
+            software_dict[namespace.environments] = syaml.syaml_dict()
+            environments = software_dict[namespace.environments]
 
         if remove:
             if env_name in environments:
@@ -995,6 +999,11 @@ ramble:
         software_dict = self.get_software_dict().copy()
 
         packages = software_dict[namespace.packages]
+
+        # Ensure package dict is an syaml_dict, for formatting
+        if not packages:
+            software_dict[namespace.packages] = syaml.syaml_dict()
+            packages = software_dict[namespace.packages]
 
         if remove:
             if pkg_name in packages:
