@@ -27,8 +27,8 @@ files that the user can modify to control the exact behavior of the experiments
 within the workspace.
 
 Ramble can create two types of workspaces:
-* anonymous workspaces
-* named workspaces
+  * anonymous workspaces
+  * named workspaces
 
 ^^^^^^^^^^^^^^^
 Named Workspace
@@ -114,12 +114,12 @@ Ramble creates workspaces using the following structure by default:
 
 
 This various parts of this directory structure are defined as:
-* ``configs/``: Contain configuration for the workspace
-* ``configs/auxiliary_software_files``: Contain files used by the package managers
-* ``experiments/``: Contain experiments define by the workspace configuration
-* ``inputs``: Contain the inputs experiments in this workspace require
-* ``logs``: Contain some logging output from ramble
-* ``software``: Contain software environments an application's package manager creates
+  * ``configs/``: Contain configuration for the workspace
+  * ``configs/auxiliary_software_files``: Contain files used by the package managers
+  * ``experiments/``: Contain experiments define by the workspace configuration
+  * ``inputs``: Contain the inputs experiments in this workspace require
+  * ``logs``: Contain some logging output from ramble
+  * ``software``: Contain software environments an application's package manager creates
 
 In the ``configs`` directory, the ``ramble.yaml`` file is the primary workspace
 configuration file. The definition for this file is documented in the
@@ -320,9 +320,9 @@ To make Ramble fully configure a workspace, one can use:
     $ ramble workspace setup
 
 This can be an expensive process, and Ramble will:
-* Install software
-* Download input files
-* Create all experiment directives and content
+  * Install software
+  * Download input files
+  * Create all experiment directives and content
 
 To perform a light-weight test version of this, one can use:
 
@@ -614,8 +614,8 @@ Archiving a Workspace
 ---------------------
 
 A workspace can be archived to either:
-* Share with other people
-* Keep for future reproduction
+  * Share with other people
+  * Keep for future reproduction
 
 In order to archive a workspace, one can use:
 
