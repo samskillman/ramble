@@ -696,6 +696,11 @@ If it is not set, modifiers will attempt to determine their own ``mode``
 attribute. This will succeed if the modifier has a single mode of operation. If
 there are multiple modes, this will raise an exception.
 
+Every modifier has a ``disabled`` mode that is defined by default. This mode
+will never be automatically enabled, but it will allow experiments to turn off
+the modifier without having to remove the modifier from the experiment
+definitions.
+
 If the ``on_executable`` attribute is not set, it will default to ``'*'`` which
 will match all executables. Modifier classes can (and should) be implemented to
 only act on the correct executable types (i.e. executables with ``use_mpi=true``).
@@ -964,7 +969,9 @@ Ramble automatically generates definitions for the following variables:
 * ``experiment_index`` - Index, in set, of experiment. If part of a chain,
   shares a value with its root.
 * ``env_path`` - Absolute path to
-  ``$workspace_root/software/{env_name}.{workload_name}``
+  ``$workspace_root/software/{package_manager_name}/{env_name}.{workload_name}``
+  if no package manager is used, ``{package_manager_name}`` is replaced with
+  ``no-package-manager``.
 * ``log_dir`` - Absolute path to ``$workspace_root/logs``
 * ``log_file`` - Absolute path to
   ``{experiment_run_dir}/{experiment_name}.out``
