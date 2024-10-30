@@ -55,6 +55,19 @@ class SoftwarePackage:
         self.name = name
         self.pkg_info = pkg_info
         self._package_type = "Base"
+        self._used = False
+
+    def mark_used(self):
+        """Mark this package a used"""
+        self._used = True
+
+    def is_used(self):
+        """Return if this package is used or not
+
+        Returns:
+            (bool): Whether package is used or not
+        """
+        return self._used
 
     def spec_str(self, all_packages: dict = {}, compiler=False):
         """Return a spec string for this software package
@@ -87,6 +100,10 @@ class SoftwarePackage:
         Returns:
             (str): String representation of this package
         """
+
+        # Don't print if it is unused and we are only interested in used packages
+        if only_used and not self.is_used():
+            return ""
 
         indentation = " " * indent
         color = rucolor.level_func(color_level)
@@ -188,6 +205,10 @@ class RenderedPackage(SoftwarePackage):
             (str): String representation of this package
         """
 
+        # Don't print if it is unused and we are only interested in used packages
+        if only_used and not self.is_used():
+            return ""
+
         indentation = " " * (indent + SUB_INDENT)
         out_str = super().info(indent, verbosity, color_level, only_used)
         out_str += f'{indentation}Spec: {self.spec.replace("@", "@@")}\n'
@@ -220,6 +241,21 @@ class TemplatePackage(SoftwarePackage):
         self._rendered_packages = defaultdict(dict)
         self._package_type = "Template"
 
+    def is_used(self):
+        """Determine if template package is used
+
+        Iterate over all packages in this template, and determine if any are
+        used.
+
+        Returns:
+            (bool): Whether this template contains any used packages or not
+        """
+        for pkgs in self._rendered_packages.values():
+            for pkg in pkgs.values():
+                if pkg.is_used():
+                    return True
+        return False
+
     def info(
         self, indent: int = 0, verbosity: int = 0, color_level: int = 0, only_used: bool = True
     ):
@@ -234,6 +270,10 @@ class TemplatePackage(SoftwarePackage):
         Returns:
             (str): String representation of this package
         """
+
+        # Don't print if it is unused and we are only interested in used packages
+        if only_used and not self.is_used():
+            return ""
 
         out_str = ""
         pkg_man_indent = indent + SUB_INDENT
@@ -338,6 +378,21 @@ class SoftwareEnvironment:
         self.name = name
         self._packages = []
         self._environment_type = "Base"
+        self._used = False
+
+    def is_used(self):
+        """Determine if environment is used or not
+
+        Returns:
+            (bool): Whether environment is used or not
+        """
+        return self._used
+
+    def mark_used(self):
+        """Mark this environment (and all of its packages) as used"""
+        self._used = True
+        for pkg in self._packages:
+            pkg.mark_used()
 
     def info(
         self, indent: int = 0, verbosity: int = 0, color_level: int = 0, only_used: bool = True
@@ -353,6 +408,10 @@ class SoftwareEnvironment:
         Returns:
             (str): information of this environment
         """
+
+        # Don't print if it is unused and we are only interested in used packages
+        if only_used and not self.is_used():
+            return ""
 
         indentation = " " * indent
         color = rucolor.level_func(color_level)
@@ -458,6 +517,18 @@ class TemplateEnvironment(SoftwareEnvironment):
         self._rendered_environments = defaultdict(dict)
         self._environment_type = "Template"
 
+    def is_used(self):
+        """Determine if TemplateEnvironment is used or not
+
+        Returns:
+            (bool): Whether template environment is used or not
+        """
+        for envs in self._rendered_environments.values():
+            for env in envs.values():
+                if env.is_used():
+                    return True
+        return False
+
     def add_package_name(self, package: str = ""):
         self._package_names.add(package)
 
@@ -475,6 +546,11 @@ class TemplateEnvironment(SoftwareEnvironment):
         Returns:
             (str): information of this environment
         """
+
+        # Don't print if it is unused and we are only interested in used packages
+        if only_used and not self.is_used():
+            return ""
+
         out_str = ""
         if self._rendered_environments:
             for envs in self._rendered_environments.values():
@@ -629,6 +705,23 @@ class SoftwareEnvironments:
                 indent, verbosity=verbosity, color_level=color_level, only_used=only_used
             )
         return out_str
+
+    def use_environment(self, package_manager, env_name):
+        """Mark an environment as used.
+
+        Given a package manager object and the name of a rendered environment,
+        mark the environment as used. This allows the info method to only print
+        information about used packages and environments.
+
+        Args:
+            package_manager (PackageManagerBase): Reference to a package manager object
+            env_name (str): Name of the rendered environment to mark as used
+        """
+
+        pm_name = package_manager.spec_prefix()
+        if pm_name in self._rendered_environments:
+            if env_name in self._rendered_environments[pm_name]:
+                self._rendered_environments[pm_name][env_name].mark_used()
 
     def unused_environments(self):
         """Iterator over environment templates that do not have any rendered environments

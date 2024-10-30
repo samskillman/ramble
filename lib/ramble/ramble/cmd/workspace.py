@@ -726,6 +726,10 @@ def workspace_info(args):
                             app_inst.expander,
                             app_inst.package_manager,
                         )
+                        # Track this env as used, for printing purposes
+                        software_environments.use_environment(
+                            app_inst.package_manager, app_inst.expander.expand_var("{env_name}")
+                        )
 
                     if print_header:
                         color.cprint(
@@ -794,7 +798,6 @@ def workspace_info(args):
     # Print software stack information
     if args.software or args.all_software:
         color.cprint("")
-        #  software_environments.print_environments(verbosity=args.verbose)
         color.cprint(rucolor.section_title("Software Stack:"))
         only_used_software = args.software
         color.cprint(
