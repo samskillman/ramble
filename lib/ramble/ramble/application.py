@@ -929,12 +929,16 @@ class ApplicationBase(metaclass=ApplicationMeta):
         self._inputs_and_fetchers(self.expander.workload_name)
 
         for input_file, input_conf in self._input_fetchers.items():
-            input_vars = {self.keywords.input_name: input_conf["input_name"]}
-            if not input_conf["expand"]:
+            input_vars = {}
+            if input_conf["expand"]:
+                input_vars[self.keywords.input_name] = input_conf["input_name"]
+            else:
                 input_vars[self.keywords.input_name] = input_file
+
             input_path = os.path.join(
-                self.expander.workload_input_dir,
-                self.expander.expand_var(input_conf["target_dir"], extra_vars=input_vars),
+                self.expander.expand_var(
+                    os.path.join(input_conf["target_dir"], input_file), extra_vars=input_vars
+                ),
             )
             self.variables[input_conf["input_name"]] = input_path
 
@@ -1268,7 +1272,7 @@ class ApplicationBase(metaclass=ApplicationMeta):
                 input_vars = {self.keywords.input_name: input_conf["input_name"]}
                 input_namespace = workload_namespace + "." + input_file
                 input_path = self.expander.expand_var(
-                    input_conf["target_dir"], extra_vars=input_vars
+                    os.path.join(input_conf["target_dir"], input_file), extra_vars=input_vars
                 )
                 input_tuple = (f"input-file-{input_file}", input_path)
 

@@ -6,7 +6,6 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
-import os
 import ramble.workload
 import ramble.language.language_base
 from ramble.language.language_base import DirectiveError
@@ -152,7 +151,7 @@ def input_file(
     name,
     url,
     description,
-    target_dir=os.path.join("{workload_input_dir}", "{input_name}"),
+    target_dir="{workload_input_dir}",
     sha256=None,
     extension=None,
     expand=True,

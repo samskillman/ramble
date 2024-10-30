@@ -174,7 +174,7 @@ def add_input_file(app_inst, input_num=1):
     input_defs[input_name] = {
         "url": input_url,
         "description": input_desc,
-        "target_dir": os.path.join("{workload_input_dir}", "{input_name}"),
+        "target_dir": "{workload_input_dir}",
     }
 
     return input_defs

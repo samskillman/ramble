@@ -339,6 +339,7 @@ class ExperimentSet:
             ),
         )
 
+        app_inst.add_expand_vars(self._workspace)
         app_inst.read_status()
 
         try:
