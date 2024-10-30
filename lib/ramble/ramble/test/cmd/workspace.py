@@ -2112,3 +2112,131 @@ def test_workspace_config_precedence(request, tmpdir):
     assert "scope1 = include_path" in output
     assert "scope2 = workspace_override" in output
     assert "scope3 = workspace" in output
+
+
+def test_workspace_info_software(request):
+    workspace_name = request.node.name
+
+    ramble.workspace.create(workspace_name)
+
+    global_args = ["-w", workspace_name]
+
+    workspace(
+        "manage",
+        "experiments",
+        "basic",
+        "--wf",
+        "test_wl",
+        "-e",
+        "pip-test",
+        "-v",
+        "n_nodes=1",
+        "-v",
+        "n_ranks=1",
+        "-v",
+        "env_name=pip-env",
+        "-p",
+        "pip",
+        global_args=global_args,
+    )
+
+    workspace(
+        "manage",
+        "experiments",
+        "basic",
+        "--wf",
+        "test_wl",
+        "-e",
+        "spack-test",
+        "-v",
+        "n_nodes=1",
+        "-v",
+        "n_ranks=1",
+        "-v",
+        "env_name=spack-env",
+        "-p",
+        "spack",
+        global_args=global_args,
+    )
+
+    workspace(
+        "manage", "software", "--pkg", "pkg1", "--spec", "pip-pkg@1.2.3", global_args=global_args
+    )
+
+    workspace(
+        "manage", "software", "--pkg", "pkg2", "--spec", "spack-pkg@1.2.3", global_args=global_args
+    )
+
+    workspace(
+        "manage",
+        "software",
+        "--env",
+        "pip-env",
+        "--environment-packages",
+        "pkg1",
+        global_args=global_args,
+    )
+
+    workspace(
+        "manage",
+        "software",
+        "--env",
+        "spack-env",
+        "--environment-packages",
+        "pkg2",
+        global_args=global_args,
+    )
+
+    output = workspace("info", "--software", global_args=global_args)
+    assert "pip-pkg" in output
+    assert "spack-pkg" in output
+    assert "pip-test" in output
+    assert "spack-test" in output
+
+    output = workspace(
+        "info",
+        "--software",
+        "--where",
+        "'{experiment_name}' == 'spack-test'",
+        global_args=global_args,
+    )
+    assert "pip-pkg" not in output
+    assert "spack-pkg" in output
+    assert "pip-test" not in output
+    assert "spack-test" in output
+
+    output = workspace(
+        "info",
+        "--all-software",
+        "--where",
+        "'{experiment_name}' == 'spack-test'",
+        global_args=global_args,
+    )
+    assert "pip-pkg" in output
+    assert "spack-pkg" in output
+    assert "pip-test" not in output
+    assert "spack-test" in output
+
+    output = workspace(
+        "info",
+        "--software",
+        "--where",
+        "'{experiment_name}' == 'pip-test'",
+        global_args=global_args,
+    )
+    assert "pip-pkg" in output
+    assert "spack-pkg" not in output
+    assert "pip-test" in output
+    assert "spack-test" not in output
+
+    output = workspace(
+        "info",
+        "--all-software",
+        "--where",
+        "'{experiment_name}' == 'pip-test'",
+        global_args=global_args,
+    )
+    assert "pip-pkg" in output
+    assert "spack-pkg" in output
+    assert "pip-test" in output
+    assert "spack-test" not in output
