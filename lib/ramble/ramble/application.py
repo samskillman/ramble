@@ -20,7 +20,6 @@ from typing import List
 
 import llnl.util.filesystem as fs
 import llnl.util.tty.color as color
-from llnl.util.tty.colify import colified
 
 import spack.util.executable
 import spack.util.spack_json
@@ -37,6 +36,7 @@ import ramble.keywords
 import ramble.repeats
 import ramble.repository
 import ramble.modifier
+import ramble.modifier_types.disabled
 import ramble.pipeline
 import ramble.success_criteria
 import ramble.util.executable
@@ -164,6 +164,7 @@ class ApplicationBase(metaclass=ApplicationMeta):
             "software": [],
             "templates": [],
             "package_manager": [],
+            "modifier_artifacts": [],
         }
         self.experiment_hash = None
 
@@ -305,77 +306,6 @@ class ApplicationBase(metaclass=ApplicationMeta):
                 for phase, phase_node in self.package_manager.all_pipeline_phases(pipeline):
                     self._pipeline_graphs[pipeline].define_edges(phase_node, internal_order=True)
 
-    def _long_print(self):
-        out_str = ""
-        if hasattr(self, "maintainers"):
-            out_str.append("\n")
-            out_str.append(rucolor.section_title("Maintainers:\n"))
-            out_str.append(colified(self.maintainers, tty=True))
-            out_str.append("\n")
-
-        if hasattr(self, "tags"):
-            out_str.append("\n")
-            out_str.append(rucolor.section_title("Tags:\n"))
-            out_str.append(colified(self.tags, tty=True))
-            out_str.append("\n")
-
-        for pipeline in self._pipelines:
-            out_str.append("\n")
-            out_str.append(rucolor.section_title(f'Pipeline "{pipeline}" Phases:\n'))
-            out_str.append(colified(self.get_pipeline_phases(pipeline), tty=True))
-
-        # Print all FOMs without a context
-        if hasattr(self, "figures_of_merit"):
-            out_str.append("\n")
-            out_str.append(rucolor.section_title("Figure of merit contexts:\n"))
-            out_str.append(rucolor.nested_1(f"\t({_NULL_CONTEXT}) context (default):\n"))
-            for name, conf in self.figures_of_merit.items():
-                if len(conf["contexts"]) == 0:
-                    out_str.append(rucolor.nested_2(f"\t\t{name}\n"))
-                    out_str.append(f'\t\t\tunits = {conf["units"]}\n')
-                    out_str.append(f'\t\t\tlog file = {conf["log_file"]}\n')
-
-            if hasattr(self, "figure_of_merit_contexts"):
-                for context_name, context_conf in self.figure_of_merit_contexts.items():
-                    out_str.append(rucolor.nested_1(f"\t{context_name} context:\n"))
-                    for name, conf in self.figures_of_merit.items():
-                        if context_name in conf["contexts"]:
-                            out_str.append(rucolor.nested_2(f"\t\t{name}\n"))
-                            out_str.append(f'\t\t\tunits = {conf["units"]}\n')
-                            out_str.append(f'\t\t\tlog file = {conf["log_file"]}\n')
-
-        if hasattr(self, "workloads"):
-            out_str.append("\n")
-            for workload in self.workloads.values():
-                out_str.append(workload.as_str())
-            out_str.append("\n")
-
-        if hasattr(self, "builtins"):
-            out_str.append(rucolor.section_title("Builtin Executables:\n"))
-            out_str.append("\t" + colified(self.builtins.keys(), tty=True) + "\n")
-
-        if hasattr(self, "package_manager_configs"):
-            out_str.append("\n")
-            out_str.append(rucolor.section_title("Package Manager Configs:\n"))
-            for name, config in self.package_manager_configs.items():
-                out_str.append(f"\t{name} = {config}\n")
-
-        spec_groups = [
-            ("compilers", "Compilers"),
-            ("software_specs", "Software Specs"),
-        ]
-        for group in spec_groups:
-            if hasattr(self, group[0]):
-                out_str.append("\n")
-                out_str.append(rucolor.section_title("%s:\n" % group[1]))
-                for name, info in getattr(self, group[0]).items():
-                    out_str.append(rucolor.nested_1("  %s:\n" % name))
-                    for key, val in info.items():
-                        if val:
-                            out_str.append("    {} = {}\n".format(key, val.replace("@", "@@")))
-
-        return out_str
-
     def set_env_variable_sets(self, env_variable_sets):
         """Set internal reference to environment variable sets"""
 
@@ -492,14 +422,7 @@ class ApplicationBase(metaclass=ApplicationMeta):
                 phase_order.append(node.key)
         return phase_order
 
-    def _short_print(self):
-        return [self.name]
-
     def __str__(self):
-        if self._verbosity == "long":
-            return "".join(self._long_print())
-        elif self._verbosity == "short":
-            return "".join(self._short_print())
         return self.name
 
     def print_vars(self, header="", vars_to_print=None, indent=""):
@@ -870,7 +793,7 @@ class ApplicationBase(metaclass=ApplicationMeta):
         self.variables[var_name] = var_value
         self.expander._variables[var_name] = var_value
         for mod_inst in self._modifier_instances:
-            mod_inst.expander._variables[var_name] = var_value
+            mod_inst.define_variable(var_name, var_value)
 
     def build_modifier_instances(self):
         """Built a map of modifier names to modifier instances needed for this
@@ -898,8 +821,11 @@ class ApplicationBase(metaclass=ApplicationMeta):
             else:
                 mod_inst.set_usage_mode(None)
 
-            mod_inst.inherit_from_application(self)
-            mod_inst.modify_experiment(self)
+            if not mod_inst.disabled:
+                mod_inst.inherit_from_application(self)
+                mod_inst.modify_experiment(self)
+            else:
+                mod_inst = ramble.modifier_types.disabled.DisabledModifier(mod_inst)
 
             self._modifier_instances.append(mod_inst)
 
@@ -1004,12 +930,16 @@ class ApplicationBase(metaclass=ApplicationMeta):
         self._inputs_and_fetchers(self.expander.workload_name)
 
         for input_file, input_conf in self._input_fetchers.items():
-            input_vars = {self.keywords.input_name: input_conf["input_name"]}
-            if not input_conf["expand"]:
+            input_vars = {}
+            if input_conf["expand"]:
+                input_vars[self.keywords.input_name] = input_conf["input_name"]
+            else:
                 input_vars[self.keywords.input_name] = input_file
+
             input_path = os.path.join(
-                self.expander.workload_input_dir,
-                self.expander.expand_var(input_conf["target_dir"], extra_vars=input_vars),
+                self.expander.expand_var(
+                    os.path.join(input_conf["target_dir"], input_file), extra_vars=input_vars
+                ),
             )
             self.variables[input_conf["input_name"]] = input_path
 
@@ -1102,7 +1032,7 @@ class ApplicationBase(metaclass=ApplicationMeta):
 
             for mod in self._modifier_instances:
                 if mod.applies_to_executable(exec_node.key):
-                    exec_vars.update(mod.modded_variables(self))
+                    exec_vars.update(mod.modded_variables(self, exec_vars))
 
             if isinstance(exec_node.attribute, ramble.util.executable.CommandExecutable):
                 # Process directive defined executables
@@ -1131,7 +1061,7 @@ class ApplicationBase(metaclass=ApplicationMeta):
                             and int(self.expander.expand_var_name(self.keywords.n_nodes)) > 1
                         ):
                             logger.warn(
-                                f"Command {cmd_conf} requires a non-empty `mpi_command` "
+                                f"Command {cmd_conf.name} requires a non-empty `mpi_command` "
                                 "variable in a multi-node experiment"
                             )
                         mpi_cmd = " " + raw_mpi_cmd + " "
@@ -1343,7 +1273,7 @@ class ApplicationBase(metaclass=ApplicationMeta):
                 input_vars = {self.keywords.input_name: input_conf["input_name"]}
                 input_namespace = workload_namespace + "." + input_file
                 input_path = self.expander.expand_var(
-                    input_conf["target_dir"], extra_vars=input_vars
+                    os.path.join(input_conf["target_dir"], input_file), extra_vars=input_vars
                 )
                 input_tuple = (f"input-file-{input_file}", input_path)
 
@@ -1439,7 +1369,7 @@ class ApplicationBase(metaclass=ApplicationMeta):
             exec_vars = {}
 
             for mod in self._modifier_instances:
-                exec_vars.update(mod.modded_variables(self))
+                exec_vars.update(mod.modded_variables(self, exec_vars))
 
             for template_name, template_conf in workspace.all_templates():
                 expand_path = os.path.join(experiment_run_dir, template_name)
@@ -1571,6 +1501,16 @@ class ApplicationBase(metaclass=ApplicationMeta):
 
         experiment_run_dir = self.expander.experiment_run_dir
         inventory_file = os.path.join(experiment_run_dir, self._inventory_file_name)
+
+        # Populate modifier artifacts portion of inventory
+        # This happens here to allow modifiers to hash files
+        # that are downloaded within phases earlier than this.
+        for mod_inst in self._modifier_instances:
+            inventory = mod_inst.artifact_inventory(workspace, app_inst)
+            if inventory:
+                self.hash_inventory["modifier_artifacts"].append(
+                    {"name": mod_inst.name, "mode": mod_inst._usage_mode, "artifacts": inventory}
+                )
 
         with lk.WriteTransaction(self.experiment_lock()):
             with open(inventory_file, "w+") as f:

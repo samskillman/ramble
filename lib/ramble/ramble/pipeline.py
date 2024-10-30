@@ -26,8 +26,11 @@ import ramble.util.hashing
 import ramble.fetch_strategy
 import ramble.stage
 import ramble.workspace
+import ramble.expander
 
 import ramble.experimental.uploader
+
+import ramble.util.path
 
 from ramble.namespace import namespace
 from ramble.util.logger import logger
@@ -68,8 +71,11 @@ class Pipeline:
         self.workspace.software_environments = self._software_environments
         self._experiment_set = workspace.build_experiment_set()
 
-    def _construct_hash(self):
-        """Hash all of the experiments, construct workspace inventory"""
+    def _construct_experiment_hashes(self):
+        """Hash all of the experiments.
+
+        Populate the workspace inventory information with experiment hash data.
+        """
         for exp, app_inst, _ in self._experiment_set.all_experiments():
             app_inst.populate_inventory(
                 self.workspace,
@@ -77,6 +83,12 @@ class Pipeline:
                 require_exist=self.require_inventory,
             )
 
+    def _construct_workspace_hash(self):
+        """Construct workspace inventory
+
+        Assumes experiment hashes are already constructed and populated into
+        the workspace.
+        """
         workspace_inventory = os.path.join(self.workspace.root, self.workspace.inventory_file_name)
         workspace_hash_file = os.path.join(self.workspace.root, self.workspace.hash_file_name)
 
@@ -110,6 +122,9 @@ class Pipeline:
 
             with open(os.path.join(self.workspace.root, self.workspace.hash_file_name), "w+") as f:
                 f.write(self.workspace.workspace_hash + "\n")
+
+            self.workspace.update_metadata("workspace_digest", self.workspace.workspace_hash)
+            self.workspace._write_metadata()
 
     def _prepare(self):
         """Perform preparation for pipeline execution"""
@@ -280,7 +295,8 @@ class AnalyzePipeline(Pipeline):
                 " Make sure your workspace is setup with\n"
                 "    ramble workspace setup"
             )
-        super()._construct_hash()
+        super()._construct_experiment_hashes()
+        super()._construct_workspace_hash()
         super()._prepare()
 
     def _complete(self):
@@ -322,13 +338,13 @@ class ArchivePipeline(Pipeline):
         self.archive_name = None
 
         if self.upload_url and not self.create_tar:
-            logger.warn(
-                "Upload URL is currently only supported when using tar format (-t)\n"
-                "Archive will not be uploaded."
-            )
+            logger.warn("Upload URL is currently only supported when using tar format (-t)")
+            logger.warn("Forcing `-t` on to enable archive upload.\n")
+            self.create_tar = True
 
     def _prepare(self):
-        super()._construct_hash()
+        super()._construct_experiment_hashes()
+        super()._construct_workspace_hash()
         super()._prepare()
 
         date_str = self.workspace.date_string()
@@ -423,16 +439,9 @@ class ArchivePipeline(Pipeline):
                 _upload_file(tar_path, remote_tar_path)
                 logger.all_msg(f"Archive Uploaded to {remote_tar_path}")
 
-                # Record upload URL to the filesystem
-                url_extension = ".url"
-                tar_url_path = tar_path + url_extension
-                with open(tar_url_path, "w") as f:
-                    f.write(remote_tar_path)
-
-                tar_url_path_latest = os.path.join(
-                    self.workspace.archive_dir, "archive.latest" + url_extension
-                )
-                self.create_simlink(tar_url_path, tar_url_path_latest)
+                # Record upload URL to workspace metadata
+                self.workspace.update_metadata("archive_url", remote_tar_path)
+                self.workspace._write_metadata()
 
 
 class MirrorPipeline(Pipeline):
@@ -488,6 +497,10 @@ class SetupPipeline(Pipeline):
         self.action_string = "Setting up"
 
     def _prepare(self):
+        # Check if the selected phases require the inventory is successful
+        if "write_inventory" in self.filters.phases or "*" in self.filters.phases:
+            self.require_inventory = True
+
         super()._prepare()
         experiment_file = open(self.workspace.all_experiments_path, "w+")
         shell = ramble.config.get("config:shell")
@@ -495,13 +508,11 @@ class SetupPipeline(Pipeline):
         experiment_file.write(f"#!{shell_path}\n")
         self.workspace.experiments_script = experiment_file
 
-    def _complete(self):
-        # Check if the selected phases require the inventory is successful
-        if "write_inventory" in self.filters.phases or "*" in self.filters.phases:
-            self.require_inventory = True
+        super()._construct_experiment_hashes()
 
+    def _complete(self):
         try:
-            super()._construct_hash()
+            super()._construct_workspace_hash()
         except FileNotFoundError as e:
             tty.warn("Unable to construct workspace hash due to missing file")
             tty.warn(e)
@@ -588,14 +599,19 @@ class PushDeploymentPipeline(Pipeline):
         self, workspace, filters, create_tar=False, upload_url=None, deployment_name=None
     ):
         super().__init__(workspace, filters)
+
+        workspace_expander = ramble.expander.Expander(workspace.get_workspace_vars(), None)
+
         self.action_string = "Pushing deployment of"
         self.require_inventory = True
         self.create_tar = create_tar
-        self.upload_url = upload_url
+        expanded_url = workspace_expander.expand_var(upload_url)
+        self.upload_url = ramble.util.path.normalize_path_or_url(expanded_url)
 
         if deployment_name:
-            workspace.deployment_name = deployment_name
-            self.deployment_name = deployment_name
+            expanded_name = workspace_expander.expand_var(deployment_name)
+            workspace.deployment_name = expanded_name
+            self.deployment_name = expanded_name
         else:
             self.deployment_name = workspace.name
 

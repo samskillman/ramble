@@ -27,11 +27,41 @@ class GcpMetadata(BasicModifier):
     maintainers("rfbgo")
 
     mode("standard", description="Standard execution mode")
+    mode(
+        "local", description="Local execution (disables parallel prefix/pdssh)"
+    )
     default_mode("standard")
 
     software_spec("pdsh", pkg_spec="pdsh", package_manager="spack*")
 
     required_variable("hostlist")
+
+    modifier_variable(
+        "metadata_parallel_prefix",
+        default="pdsh -R ssh -N -w {hostlist} '",
+        modes=["standard"],
+        description="Express how parlalelism should be done between nodes",
+    )
+    modifier_variable(
+        "metadata_parallel_prefix",
+        default="",
+        modes=["local"],
+        description="Express how parlalelism should be done between nodes",
+    )
+
+    # Need to close any open `'` we leave in the prefix
+    modifier_variable(
+        "metadata_parallel_suffix",
+        default="'",
+        modes=["standard"],
+        description="Optional suffix for {metadata_parallel_prefix}",
+    )
+    modifier_variable(
+        "metadata_parallel_suffix",
+        default="",
+        modes=["local"],
+        description="Optional suffix for {metadata_parallel_prefix}",
+    )
 
     executable_modifier("gcp_metadata_exec")
 
@@ -46,37 +76,46 @@ class GcpMetadata(BasicModifier):
         post_cmds = []
         pre_cmds = []
 
-        pre_cmds.append(
-            CommandExecutable(
-                "save-old-loglevel",
-                template=[
-                    'old_pdsh_args="$PDSH_SSH_ARGS_APPEND"',
-                    'export PDSH_SSH_ARGS_APPEND="-q"',
-                ],
+        if self._usage_mode != "local":
+            pre_cmds.append(
+                CommandExecutable(
+                    "save-old-loglevel",
+                    template=[
+                        'old_pdsh_args="$PDSH_SSH_ARGS_APPEND"',
+                        'export PDSH_SSH_ARGS_APPEND="-q"',
+                    ],
+                )
             )
-        )
 
         payloads = [
-            # type, end point, per_node
-            ("instance", "machine-type", False),
-            ("instance", "image", False),
-            ("instance", "hostname", False),
+            # type, end point, per_node, log_name
+            ("instance", "machine-type", False, None),
+            ("instance", "image", False, None),
+            ("instance", "hostname", False, None),
             (
                 "instance",
                 "id",
                 True,
+                None,
             ),  # True since we want the gid of every node
-            ("project", "numeric-project-id", False),
-            ("instance", "attributes/physical_host", True),
+            ("project", "numeric-project-id", False, None),
+            ("instance", "attributes/physical_host", True, None),
         ]
 
-        for type, end_point, per_node in payloads:
+        n_nodes = int(self.expander.expand_var_name("n_nodes"))
+        if n_nodes > 1 and self._usage_mode != "local":
+            # Single-out the vm_id of the executing-node
+            payloads.append(("instance", "id", False, "main-gid"))
+
+        for type, end_point, per_node, log_name in payloads:
             prefix = ""
             suffix = ""
             if per_node:
-                prefix = "pdsh -N -w {hostlist} '"
-                suffix = "'"
-            log_name = end_point.split("/")[-1]
+                prefix = self.expander.expand_var("{metadata_parallel_prefix}")
+                suffix = self.expander.expand_var("{metadata_parallel_suffix}")
+            log_name = (
+                log_name if log_name is not None else end_point.split("/")[-1]
+            )
             pre_cmds.append(
                 CommandExecutable(
                     "machine-type",
@@ -92,12 +131,13 @@ class GcpMetadata(BasicModifier):
                 )
             )
 
-        pre_cmds.append(
-            CommandExecutable(
-                "restore-old-loglevel",
-                template=['export PDSH_SSH_ARGS_APPEND="$old_pdsh_args"'],
+        if self._usage_mode != "local":
+            pre_cmds.append(
+                CommandExecutable(
+                    "restore-old-loglevel",
+                    template=['export PDSH_SSH_ARGS_APPEND="$old_pdsh_args"'],
+                )
             )
-        )
 
         return pre_cmds, post_cmds
 
@@ -159,9 +199,10 @@ class GcpMetadata(BasicModifier):
             "w+",
         ) as f:
             if len(level0_groups) > 0:
-                f.write(f"Level 0 groups = {len(level0_groups)}\n")
-                f.write(f"Level 1 groups = {len(level1_groups)}\n")
-                f.write(f"Level 2 groups = {len(level2_groups)}\n")
+                # The group level name comes from https://cloud.google.com/compute/docs/instances/use-compact-placement-policies#verify-vm-location.
+                f.write(f"Level 0 groups (cluster) = {len(level0_groups)}\n")
+                f.write(f"Level 1 groups (rack) = {len(level1_groups)}\n")
+                f.write(f"Level 2 groups (host) = {len(level2_groups)}\n")
                 f.write(f'All hosts = {",".join(all_hosts)}\n')
 
     def _prepare_analysis(self, workspace):
@@ -191,6 +232,12 @@ class GcpMetadata(BasicModifier):
         log_file="{experiment_run_dir}/gcp-metadata.hostname.log",
         fom_type=FomType.INFO,
     )
+    figure_of_merit(
+        "main-gid",
+        fom_regex=r"(?P<gid>.*)",
+        group_name="gid",
+        log_file="{experiment_run_dir}/gcp-metadata.main-gid.log",
+    )
 
     # This returns a list of all known gids in the job
     figure_of_merit(
@@ -209,8 +256,8 @@ class GcpMetadata(BasicModifier):
     )
 
     figure_of_merit(
-        "Level {level_num} Groups",
-        fom_regex="Level (?P<level_num>[0-9]) groups = (?P<num_groups>[0-9]+)",
+        "Level {level_num} Groups ({level_name})",
+        fom_regex=r"Level (?P<level_num>[0-9]) groups \((?P<level_name>[\w]+)\) = (?P<num_groups>[0-9]+)",
         log_file="{experiment_run_dir}/gcp-metadata.topology_summary.log",
         group_name="num_groups",
         units="",
