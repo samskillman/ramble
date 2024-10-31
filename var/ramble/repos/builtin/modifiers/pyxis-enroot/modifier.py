@@ -42,6 +42,8 @@ class PyxisEnroot(BasicModifier):
 
     container_extension = "sqsh"
 
+    container_hash_file_extension = "sha256"
+
     name = "pyxis-enroot"
 
     tags("container", "slurm")
@@ -49,6 +51,10 @@ class PyxisEnroot(BasicModifier):
     maintainers("douglasjacobsen")
 
     mode("standard", description="Standard execution mode for pyxis-enroot")
+    mode(
+        "no_provenance",
+        description="Standard execution mode without provenance tracking",
+    )
     default_mode("standard")
 
     required_variable("container_name")
@@ -58,35 +64,35 @@ class PyxisEnroot(BasicModifier):
         "container_mounts",
         default="",
         description="Comma delimited list of mount points for the container. Filled in by modifier",
-        modes=["standard"],
+        modes=["standard", "no_provenance"],
     )
 
     modifier_variable(
         "container_env_vars",
         default="",
         description="Comma delimited list of environments to import into container. Filled in by modifier",
-        modes=["standard"],
+        modes=["standard", "no_provenance"],
     )
 
     modifier_variable(
         "container_dir",
         default="{workload_input_dir}",
         description="Directory where the container sqsh will be stored",
-        modes=["standard"],
+        modes=["standard", "no_provenance"],
     )
 
     modifier_variable(
         "container_extract_dir",
         default="{workload_input_dir}",
         description="Directory where the extracted paths will be stored",
-        modes=["standard"],
+        modes=["standard", "no_provenance"],
     )
 
     modifier_variable(
         "container_path",
         default="{container_dir}/{container_name}." + container_extension,
         description="Full path to the container sqsh file",
-        modes=["standard"],
+        modes=["standard", "no_provenance"],
     )
 
     modifier_variable(
@@ -94,7 +100,7 @@ class PyxisEnroot(BasicModifier):
         default="[]",
         description="List of paths to extract from the sqsh file into the {workload_input_dir}. "
         + "Will have paths of {workload_input_dir}/enroot_extractions/{path_basename}",
-        modes=["standard"],
+        modes=["standard", "no_provenance"],
         track_used=False,
     )
 
@@ -191,7 +197,6 @@ class PyxisEnroot(BasicModifier):
                         "container_mounts",
                         modification=prefix + exp_mount,
                         method="append",
-                        separator=",",
                         mode=self._usage_mode,
                     )
 
@@ -251,10 +256,6 @@ class PyxisEnroot(BasicModifier):
             )
             container_path = self.expander.expand_var_name("container_path")
 
-            if not os.path.exists(container_extract_dir):
-                if not workspace.dry_run:
-                    fs.mkdirp(container_extract_dir)
-
             unsquash_args = [
                 "-f",
                 "-dest",
@@ -284,6 +285,9 @@ class PyxisEnroot(BasicModifier):
         container_uri = self.expander.expand_var_name("container_uri")
         inventory = []
 
+        if self._usage_mode == "no_provenance":
+            return inventory
+
         inventory.append(
             {
                 "container_uri": container_uri,
@@ -292,11 +296,25 @@ class PyxisEnroot(BasicModifier):
         )
 
         if os.path.isfile(container_path):
+
+            hash_file_path = (
+                self.expander.expand_var_name("container_path")
+                + "."
+                + self.container_hash_file_extension
+            )
+
+            if os.path.exists(hash_file_path):
+                with open(hash_file_path, "r") as f:
+                    container_hash = f.read()
+
+            else:
+                container_hash = hash_file(container_path)
+
+                with open(hash_file_path, "w+") as f:
+                    f.write(container_hash)
+
             inventory.append(
-                {
-                    "container_name": container_name,
-                    "digest": hash_file(container_path),
-                }
+                {"container_name": container_name, "digest": container_hash}
             )
 
         return inventory
