@@ -34,7 +34,7 @@ class GcpMetadata(BasicModifier):
 
     software_spec("pdsh", pkg_spec="pdsh", package_manager="spack*")
 
-    required_variable("hostlist")
+    required_variable("hostlist", modes=["standard"])
 
     modifier_variable(
         "metadata_parallel_prefix",
