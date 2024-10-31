@@ -829,7 +829,7 @@ class ApplicationBase(metaclass=ApplicationMeta):
             self._modifier_instances.append(mod_inst)
 
             # Add this modifiers required variables for validation
-            self.keywords.update_keys(mod_inst.required_vars)
+            self.keywords.update_keys(mod_inst.get_required_variables())
 
         # Ensure no expand vars are set correctly for modifiers
         for mod_inst in self._modifier_instances:

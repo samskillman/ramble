@@ -256,19 +256,23 @@ def env_var_modification(name, modification=None, method="set", mode=None, modes
 
 
 @modifier_directive("required_vars")
-def required_variable(var: str, results_level="variable"):
+def required_variable(var: str, results_level="variable", modes=None):
     """Mark a variable as being required by this modifier
 
     Args:
         var (str): Variable name to mark as required
         results_level (str): 'variable' or 'key'. If 'key', variable is promoted to
                              a key within JSON or YAML formatted results.
+        modes (list[str] | None): modes that the required check should be applied. The
+                            default None means apply to all modes.
     """
 
     def _mark_required_var(mod):
         mod.required_vars[var] = {
             "type": ramble.keywords.key_type.required,
             "level": ramble.keywords.output_level.variable,
+            # Extra prop that's only used for filtering
+            "modes": set(modes) if modes is not None else None,
         }
 
     return _mark_required_var
