@@ -10,13 +10,18 @@ import json
 import hashlib
 import spack.util.spack_json as sjson
 
+BLOCK_SIZE = 1024 * 1024
+
 
 def hash_file(file_path):
-    file_hash = None
+    file_hash = hashlib.sha256()
     with open(file_path, "rb") as f:
-        bytes = f.read()
-        file_hash = hashlib.sha256(bytes).hexdigest()
-    return file_hash
+        while True:
+            bytes = f.read(BLOCK_SIZE)
+            if not bytes:
+                break
+            file_hash.update(bytes)
+    return file_hash.hexdigest()
 
 
 def hash_string(string):
