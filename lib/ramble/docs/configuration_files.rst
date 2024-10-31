@@ -307,7 +307,7 @@ The format of this config section is as follows:
 In the above, the ``indentation`` attribute is an integer that will be used to
 inject spaces at the beginning of each line. The ``prefix`` attribute is used
 to define a prefix (after the indentation) to add to each line of the formatted
-executable. The ``join_separator`` attribute define the string that will be
+executable. The ``join_separator`` attribute defines the string that will be
 used to join independent lines of the formatted executable. The ``commands``
 attribute is a list of strings that will be re-formatted using the definitions
 in the rest of the formatted executable definition. Each entry will be split
