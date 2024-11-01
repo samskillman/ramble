@@ -85,7 +85,6 @@ def load_results(args):
     results_dict = {}
 
     if args.file:
-        # FIXME: why does this call back into cmd?
         if os.path.exists(args.file):
             results_dict = ramble.cmd.results.import_results_file(args.file)
         else:
@@ -117,18 +116,10 @@ def load_results(args):
 
 
 def is_repeat_child(experiment):
-    try:
-        if int(experiment["RAMBLE_VARIABLES"][keywords.repeat_index]) > 0:
-            return True
-        else:
-            return False
-    except KeyError:
-        # TODO: Remove this old implementation. I keep it here since the JSON update was so recent
-        ends_in_number = re.search(r"\.\d+$", experiment["name"])
-        if ends_in_number:
-            return True
-        else:
-            return False
+    if int(experiment["RAMBLE_VARIABLES"][keywords.repeat_index]) > 0:
+        return True
+    else:
+        return False
 
 
 def prepare_data(results: dict, where_query) -> pd.DataFrame:
@@ -174,25 +165,14 @@ def prepare_data(results: dict, where_query) -> pd.DataFrame:
         3   exp_2      fom_2           73        2
     """
 
-    # TODO: is this sufficient?
-    # panda = pd.json_normalize(results['experiments'])
-    # print(panda['CONTEXTS']) # would need to flatten contexts too
-    # Then remove things we don't need, like failures and repeats
-
     unnest_context = []
     skip_exps = []
     # first unnest dictionaries
     for exp in results["experiments"]:
-        # TODO: this does not work as expected for repeats since success is not clear
-        # TODO: how to handle success? Repeats make this tricky because some children might have
-        # status=success but parent might have status=failed
-        # if exp['RAMBLE_STATUS'] != 'SUCCESS' or exp['name'] in skip_exps:
-
-        # TODO: disable skip_exps in favor of a more explicit is_child or is_parent check
         if exp["name"] in skip_exps or is_repeat_child(exp):
             logger.debug(f"Skipping import of experiment {exp['name']}")
             continue
-        # FIXME: is this wise? We need to flesh out the CUJ around success/fail
+
         elif exp["RAMBLE_STATUS"] != "SUCCESS":
             continue
         else:
@@ -309,8 +289,6 @@ class PlotFactory:
                     )
 
         if not plots:
-            # TODO: should this be checked in cmd?
-            # TODO: make this error more descriptive
             logger.die("No plots requested. Please specify required plots or see help (-h)")
         else:
             return plots
@@ -400,7 +378,6 @@ class PlotGenerator:
                 from_col=ReportVars.FOM_VALUE_MAX.value,
             )
 
-    # TODO: these args come from the spec, so don't need to be passed and could be stored at init
     def draw(self, perf_measure, scale_var, series, y_label=None):
         series_data = self.output_df.query(f'series == "{series}"').copy()
 

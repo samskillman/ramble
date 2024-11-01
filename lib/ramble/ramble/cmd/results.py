@@ -44,7 +44,7 @@ def setup_parser(subparser):
         dest="strong_scaling",
         nargs="+",
         action="append",
-        help="generate a scaling report, requires two args: [performance metric] [scaling metric]"
+        help="generate a scaling report, requires two args: [y-axis metric] [x-axis metric]"
         "[optional: group by]",
         required=False,
     )
@@ -53,7 +53,7 @@ def setup_parser(subparser):
         dest="weak_scaling",
         nargs="+",
         action="append",
-        help="generate a scaling report, requires two args: [performance metric] [scaling metric]"
+        help="generate a scaling report, requires two args: [y-axis metric] [x-axis metric]"
         "[optional: group by]",
         required=False,
     )
@@ -62,7 +62,7 @@ def setup_parser(subparser):
         dest="multi_line",
         nargs="+",
         action="append",
-        help="generate a scaling report, requires two args: [performance metric] [scaling metric]"
+        help="generate a scaling report, requires two args: [y-axis metric] [x-axis metric]"
         "[optional: group by]",
         required=False,
     )
@@ -97,7 +97,7 @@ def setup_parser(subparser):
         action="store_true",
         help=(
             "Normalize charts where possible. For scaling charts, this requires fom_type to be "
-            "specified as either 'time' or 'throughput'."
+            "specified as either 'time' or 'throughput' in the application definition."
         ),
         required=False,
     )
