@@ -35,8 +35,7 @@ class PyNemo(ExecutableApplication):
 
     executable(
         "pretraining_exec",
-        'bash -c "cd /opt/NeMo; git rev-parse HEAD; export PYTHONPATH=/opt/NeMo:\${PYTHONPATH}; '
-        "CUDA_VISIBLE_DEVICES={cuda_visible_devices} "
+        'bash -c "cd /opt/NeMo; git rev-parse HEAD; '
         "python3 -u /opt/NeMo/examples/nlp/language_modeling/megatron_gpt_pretraining.py "
         '--config-path={nemo_generated_config_path} --config-name={nemo_generated_config_name}"',
         use_mpi=True,
