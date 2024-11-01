@@ -27,7 +27,7 @@ class ModifierBase(metaclass=ModifierMeta):
     _builtin_name = NS_SEPARATOR.join(("modifier_builtin", "{obj_name}", "{name}"))
     _mod_prefix_builtin = f"modifier_builtin{NS_SEPARATOR}"
     _language_classes = [ModifierMeta, SharedMeta]
-    _pipelines = ["analyze", "archive", "mirror", "setup", "pushtocache", "execute"]
+    _pipelines = ["analyze", "archive", "mirror", "setup", "pushtocache", "execute", "logs"]
 
     modifier_class = "ModifierBase"
 
