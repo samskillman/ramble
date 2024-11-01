@@ -1371,38 +1371,39 @@ class PyNemo(ExecutableApplication):
 
         final_regex = re.compile(self.final_epoch_regex)
 
-        with open(log_file, "r", encoding="ISO-8859-1") as f:
-            data = f.read()
+        if os.path.exists(log_file):
+            with open(log_file, "r", encoding="ISO-8859-1") as f:
+                data = f.read()
 
-        with open(log_file, "r", encoding="ISO-8859-1") as f:
-            for line in f.readlines():
-                m = final_regex.match(line)
+            with open(log_file, "r", encoding="ISO-8859-1") as f:
+                for line in f.readlines():
+                    m = final_regex.match(line)
 
-                if m:
-                    timestamp = m.group("elapsed_time")
+                    if m:
+                        timestamp = m.group("elapsed_time")
 
-                    time_parts = timestamp.split(":")
+                        time_parts = timestamp.split(":")
 
-                    part_s = 0
-                    mult = 1
-                    for part in reversed(time_parts):
-                        part_s += int(part) * mult
-                        mult = mult * 60
-                    elapsed_s += part_s
+                        part_s = 0
+                        mult = 1
+                        for part in reversed(time_parts):
+                            part_s += int(part) * mult
+                            mult = mult * 60
+                        elapsed_s += part_s
 
-        processed_log = self.expander.expand_var(
-            "{experiment_run_dir}/processed_{experiment_name}.out"
-        )
-
-        with open(processed_log, "w+") as f:
-            f.write(
-                data.replace("\x13", "\n")
-                .replace("\x96\x88", "")
-                .replace("â", "")
+            processed_log = self.expander.expand_var(
+                "{experiment_run_dir}/processed_{experiment_name}.out"
             )
 
-        sec_file_path = self.expander.expand_var(
-            "{experiment_run_dir}/elapsed_seconds"
-        )
-        with open(sec_file_path, "w+") as f:
-            f.write(f"Elapsed seconds: {elapsed_s}")
+            with open(processed_log, "w+") as f:
+                f.write(
+                    data.replace("\x13", "\n")
+                    .replace("\x96\x88", "")
+                    .replace("â", "")
+                )
+
+            sec_file_path = self.expander.expand_var(
+                "{experiment_run_dir}/elapsed_seconds"
+            )
+            with open(sec_file_path, "w+") as f:
+                f.write(f"Elapsed seconds: {elapsed_s}")
