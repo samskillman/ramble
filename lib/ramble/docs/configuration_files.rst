@@ -298,15 +298,46 @@ The format of this config section is as follows:
 .. code-block:: yaml
 
   formatted_executables:
+    command_name:
+      [indentation: integer number of indentation spaces]
+      [prefix: prefix string]
+      [join_separator: string to use to join commands]
+      [commands: [list, of, commands]]
+
+In the above, the ``indentation`` attribute is an integer that will be used to
+inject spaces at the beginning of each line. The ``prefix`` attribute is used
+to define a prefix (after the indentation) to add to each line of the formatted
+executable. The ``join_separator`` attribute defines the string that will be
+used to join independent lines of the formatted executable. The ``commands``
+attribute is a list of strings that will be re-formatted using the definitions
+in the rest of the formatted executable definition. Each entry will be split
+across new line characters before reformatting.
+
+The default values for the attributes are:
+
+.. code-block:: yaml
+
+  formatted_executables:
+    command_name:
+      indentation: 0
+      prefix: ''
+      join_separator: '\n'
+      commands:
+      - '{unformatted_command}'
+
+A more complete exampe of using formatted executables can be seen below:
+
+.. code-block:: yaml
+
+  formatted_executables:
     new_command:
       indentation: 8
       prefix: '- '
       join_separator: '\n'
 
-
 The above example defines a new variable named ``new_command`` which will be a
 new-line (``\n``) demlimited list of executables, where each executable is
-prefixed with ``- `` and is indented 8 space characters.
+prefixed with ``'- '`` and is indented 8 space characters.
 
 The default configuration files define one formatted executable named
 ``command``. Its definition can be seen with:
