@@ -34,8 +34,8 @@ def test_spack_package_manager_provenance_zlib(mock_applications, request):
 
     workspace("setup", global_args=global_args)
 
-    spack_yaml = os.path.join(ws.software_dir, "zlib", "spack.yaml")
-    spack_lock = os.path.join(ws.software_dir, "zlib", "spack.lock")
+    spack_yaml = os.path.join(ws.software_dir, "spack-lightweight", "zlib", "spack.yaml")
+    spack_lock = os.path.join(ws.software_dir, "spack-lightweight", "zlib", "spack.lock")
 
     assert os.path.isfile(spack_yaml)
 
