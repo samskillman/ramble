@@ -10,6 +10,7 @@ import os
 import re
 import shutil
 import sys
+import urllib.parse
 
 from ramble.application import ApplicationError
 from ramble.pkgmankit import *
@@ -17,9 +18,11 @@ from ramble.pkgmankit import *
 import ramble.config
 from ramble.error import RambleError
 from ramble.util.executable import which
-from ramble.util.hashing import hash_file, hash_string
+from ramble.util.hashing import hash_string
 from ramble.util.logger import logger
 from ramble.util.shell_utils import source_str
+import ramble.stage
+import ramble.fetch_strategy
 
 from spack.util.executable import Executable
 import llnl.util.filesystem as fs
@@ -395,6 +398,18 @@ class PipRunner:
             )
             shutil.copyfile(external_env_path, dest)
             return
+        parsed_path = urllib.parse.urlparse(external_env_path)
+        if parsed_path.scheme:
+            fetcher = ramble.fetch_strategy.URLFetchStrategy(
+                url=external_env_path
+            )
+            with ramble.stage.InputStage(
+                fetcher,
+                path=os.path.dirname(dest),
+                name=os.path.basename(dest),
+            ) as stage:
+                stage.fetch()
+            return
         # Assume the given external_env_path already points to a venv path,
         # If not, also attempt path/.venv/.
         maybe_paths = ["", self._venv_name]
@@ -482,7 +497,10 @@ class PipRunner:
     def get_version(self):
         if self.dry_run:
             return "unknown"
-        exe = self._get_venv_python()
+        # The bootstrap python should have the same version as the venv one.
+        # Use the bootstrap one here as get_version may be called (for instance for compute hash)
+        # before the venv environment is constructed.
+        exe = self.get_bootstrap_python()
         out = exe("-m", "pip", "--version", output=str)
         match = re.search(r"pip (?P<version>[\d.]+) from", out).group(
             "version"
@@ -491,11 +509,7 @@ class PipRunner:
 
     def inventory_hash(self):
         """Create a hash for ramble inventory purposes"""
-        self._check_env_configured()
-        if self.dry_run:
-            return hash_string(self._generate_requirement_content())
-        else:
-            return hash_file(os.path.join(self.env_path, self._lock_file_name))
+        return hash_string(self._generate_requirement_content())
 
     def installed_packages(self):
         """Return a set of installed packages based on the lock file"""
