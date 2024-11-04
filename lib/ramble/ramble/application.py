@@ -830,7 +830,7 @@ class ApplicationBase(metaclass=ApplicationMeta):
             self._modifier_instances.append(mod_inst)
 
             # Add this modifiers required variables for validation
-            self.keywords.update_keys(mod_inst.required_vars)
+            self.keywords.update_keys(mod_inst.get_required_variables())
 
         # Ensure no expand vars are set correctly for modifiers
         for mod_inst in self._modifier_instances:
@@ -1751,6 +1751,17 @@ class ApplicationBase(metaclass=ApplicationMeta):
                 self.result.contexts.insert(0, context_map)
             else:
                 self.result.contexts.append(context_map)
+
+    register_phase(
+        "append_results_to_workspace", pipeline="analyze", run_after=["analyze_experiments"]
+    )
+
+    def _append_results_to_workspace(self, workspace, app_inst=None):
+        """Phase for injected experiment results into workspace results
+
+        This allows an experiment to register its results into the workspace,
+        so when the workspace dumps results they are included.
+        """
 
         workspace.append_result(self.result.to_dict())
 

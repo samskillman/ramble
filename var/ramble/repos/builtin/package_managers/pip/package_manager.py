@@ -10,6 +10,7 @@ import os
 import re
 import shutil
 import sys
+import urllib.parse
 
 from ramble.application import ApplicationError
 from ramble.pkgmankit import *
@@ -17,9 +18,11 @@ from ramble.pkgmankit import *
 import ramble.config
 from ramble.error import RambleError
 from ramble.util.executable import which
-from ramble.util.hashing import hash_file, hash_string
+from ramble.util.hashing import hash_string
 from ramble.util.logger import logger
 from ramble.util.shell_utils import source_str
+import ramble.stage
+import ramble.fetch_strategy
 
 from spack.util.executable import Executable
 import llnl.util.filesystem as fs
@@ -29,6 +32,8 @@ class Pip(PackageManagerBase):
     """Pip package manager class definition"""
 
     name = "pip"
+
+    _spec_prefix = "pip"
 
     def __init__(self, file_path):
         super().__init__(file_path)
@@ -207,6 +212,31 @@ class Pip(PackageManagerBase):
             "If a software mirror is required, it needs to be set up outside of Ramble"
         )
 
+    def _add_software_to_results(self, workspace, app_inst=None):
+        """Augment the owning experiment's results with software stack information
+
+        This is a registered phase by the base package manager class, so here
+        we only override its base definition.
+
+        Args:
+            workspace (Workspace): A reference to the workspace that owns the
+                                   current pipeline
+            app_inst (Application): A reference to the application instance for
+                                    the current experiment
+        """
+
+        env_path = self.app_inst.expander.env_path
+        self.runner.set_dry_run(workspace.dry_run)
+        self.runner.configure_env(env_path)
+
+        if self._spec_prefix not in app_inst.result.software:
+            app_inst.result.software[self._spec_prefix] = []
+
+        package_list = app_inst.result.software[self._spec_prefix]
+
+        for info in self.runner.package_provenance():
+            package_list.append(info)
+
 
 package_name_regex = re.compile(
     r"\s*(?P<pkg_name>[A-Z0-9][A-Z0-9._-]*[A-Z0-9]|[A-Z0-9]).*", re.IGNORECASE
@@ -368,6 +398,18 @@ class PipRunner:
             )
             shutil.copyfile(external_env_path, dest)
             return
+        parsed_path = urllib.parse.urlparse(external_env_path)
+        if parsed_path.scheme:
+            fetcher = ramble.fetch_strategy.URLFetchStrategy(
+                url=external_env_path
+            )
+            with ramble.stage.InputStage(
+                fetcher,
+                path=os.path.dirname(dest),
+                name=os.path.basename(dest),
+            ) as stage:
+                stage.fetch()
+            return
         # Assume the given external_env_path already points to a venv path,
         # If not, also attempt path/.venv/.
         maybe_paths = ["", self._venv_name]
@@ -455,7 +497,10 @@ class PipRunner:
     def get_version(self):
         if self.dry_run:
             return "unknown"
-        exe = self._get_venv_python()
+        # The bootstrap python should have the same version as the venv one.
+        # Use the bootstrap one here as get_version may be called (for instance for compute hash)
+        # before the venv environment is constructed.
+        exe = self.get_bootstrap_python()
         out = exe("-m", "pip", "--version", output=str)
         match = re.search(r"pip (?P<version>[\d.]+) from", out).group(
             "version"
@@ -464,11 +509,7 @@ class PipRunner:
 
     def inventory_hash(self):
         """Create a hash for ramble inventory purposes"""
-        self._check_env_configured()
-        if self.dry_run:
-            return hash_string(self._generate_requirement_content())
-        else:
-            return hash_file(os.path.join(self.env_path, self._lock_file_name))
+        return hash_string(self._generate_requirement_content())
 
     def installed_packages(self):
         """Return a set of installed packages based on the lock file"""
@@ -486,6 +527,60 @@ class PipRunner:
                     if "==" in req:
                         pkgs.add(req.split("==")[0].strip())
         return pkgs
+
+    def _package_dict_from_str(self, in_str):
+        """Construct a package dictionary from a package string
+
+        Args:
+            in_str (str): String representing a package, as output from `pip freeze`
+
+        Returns:
+            (dict): Dictionary representing the package information
+        """
+
+        if not in_str:
+            return None
+
+        parts = in_str.replace("\n", "").split("==")
+
+        if len(parts) <= 1:
+            return None
+
+        version = parts[1]
+
+        if "[" in parts[0]:
+            name_parts = parts[0].replace("]", "").split("[")
+            name = name_parts[0]
+            variants = name_parts[1]
+        else:
+            name = parts[0]
+            variants = ""
+
+        info_dict = {"name": name, "version": version, "variants": variants}
+
+        return info_dict
+
+    def package_provenance(self):
+        """Iterator over package information dictionaries
+
+        Examine the package definitions in the environment lock file. Yield
+        each valid package dictionary created from lines in the lock file.
+
+        Yields:
+            (dict): Package information dictionary
+        """
+
+        lock_file = os.path.join(self.env_path, self._lock_file_name)
+
+        if os.path.exists(lock_file):
+            with open(lock_file) as f:
+                for line in f.readlines():
+                    info_dict = self._package_dict_from_str(
+                        line.replace("\n", "")
+                    )
+
+                    if info_dict:
+                        yield info_dict
 
     def _dry_run_print(self, executable, args):
         logger.msg(f"DRY-RUN: would run {executable}")

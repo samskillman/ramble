@@ -73,9 +73,9 @@ ramble:
   software:
     packages:
       gcc:
-        pkg_spec: gcc@8.5.0
+        pkg_spec: gcc@13.2.0
       intel-mpi:
-        pkg_spec: intel-mpi@2018.4.274
+        pkg_spec: intel-oneapi-mpi@2021.11.0
         compiler: gcc
       wrfv4:
         pkg_spec: wrf@4.2 build_type=dm+sm compile_type=em_real nesting=basic ~chem ~pnetcdf
@@ -102,12 +102,32 @@ licenses:
       WRF_LICENSE: port@server
 """
 
+    test_compilers = """
+compilers:
+- compiler:
+    spec: gcc@=13.2.0
+    paths:
+      cc: /usr/bin/gcc
+      cxx: /usr/bin/g++
+      f77: null
+      fc: null
+    flags: {}
+    operating_system: rocky8
+    target: x86_64
+    modules: []
+    environment: {}
+    extra_rpaths: []
+"""
+
     workspace_name = "test_end_to_end_wrfv4"
     with ramble.workspace.create(workspace_name) as ws1:
         ws1.write()
 
         config_path = os.path.join(ws1.config_dir, ramble.workspace.config_file_name)
         license_path = os.path.join(ws1.config_dir, "licenses.yaml")
+        compilers_path = os.path.join(
+            ws1.config_dir, ramble.workspace.auxiliary_software_dir_name, "compilers.yaml"
+        )
 
         aux_software_path = os.path.join(
             ws1.config_dir, ramble.workspace.auxiliary_software_dir_name
@@ -119,6 +139,9 @@ licenses:
 
         with open(license_path, "w+") as f:
             f.write(test_licenses)
+
+        with open(compilers_path, "w+") as f:
+            f.write(test_compilers)
 
         for file in aux_software_files:
             file_path = os.path.join(aux_software_path, file)
@@ -153,12 +176,6 @@ licenses:
             for file in aux_software_files:
                 file_path = os.path.join(software_path, file)
                 assert os.path.exists(file_path)
-
-            lock_file = os.path.join(software_path, "spack.lock")
-            with open(lock_file, "w+") as f:
-                f.write("{\n")
-                f.write('\t"test_key": "val"\n')
-                f.write("}\n")
 
         expected_experiments = [
             "scaling_1_part1_wrfv4",
@@ -278,6 +295,8 @@ licenses:
                 assert "Maximum Timestep Time = 55.5 s" in data
                 assert "Avg. Max Ratio Time = 0.6" in data
                 assert "Number of timesteps = 5" in data
+                assert "Software definitions:" in data
+                assert "spack packages:" in data
 
         workspace("archive", global_args=["-w", workspace_name])
 

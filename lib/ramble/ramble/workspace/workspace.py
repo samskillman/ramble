@@ -927,7 +927,11 @@ ramble:
 
         software_dict = self.get_software_dict().copy()
 
-        environments = software_dict[namespace.environments]
+        if namespace.environments in software_dict:
+            environments = software_dict[namespace.environments]
+        else:
+            environments = None
+
         # Ensure package dict is an syaml_dict, for formatting
         if not environments:
             software_dict[namespace.environments] = syaml.syaml_dict()
@@ -998,7 +1002,10 @@ ramble:
 
         software_dict = self.get_software_dict().copy()
 
-        packages = software_dict[namespace.packages]
+        if namespace.packages in software_dict:
+            packages = software_dict[namespace.packages]
+        else:
+            packages = None
 
         # Ensure package dict is an syaml_dict, for formatting
         if not packages:
@@ -1558,8 +1565,34 @@ ramble:
                                     for fom_val in fom_val_list:
                                         f.write(f"      {fom_val.strip()}\n")
 
+                            # Print software section if it contains info
+                            if "SOFTWARE" in exp and exp["SOFTWARE"]:
+                                f.write("  Software definitions:\n")
+                                for package_manager, packages in exp["SOFTWARE"].items():
+                                    f.write(f"    {package_manager} packages:\n")
+                                    for pkg in packages:
+                                        f.write(f"      {pkg['name']} @{pkg['version']}\n")
+
+                        else:
+                            for context in exp["CONTEXTS"]:
+                                f.write(f'  {context["display_name"]} figures of merit:\n')
+                                for fom in context["foms"]:
+                                    name = fom["name"]
+                                    if fom["origin_type"] == "modifier":
+                                        delim = "::"
+                                        mod = fom["origin"]
+                                        name = f"{fom['origin_type']}{delim}{mod}{delim}{name}"
+
                                 for fom_output in single_foms:
                                     f.write("    %s\n" % (fom_output.strip()))
+
+                            # Print software section if it contains info
+                            if "SOFTWARE" in exp and exp["SOFTWARE"]:
+                                f.write("  Software definitions:\n")
+                                for package_manager, packages in exp["SOFTWARE"].items():
+                                    f.write(f"    {package_manager} packages:\n")
+                                    for pkg in packages:
+                                        f.write(f"      {pkg['name']} @{pkg['version']}\n")
 
                 else:
                     logger.msg("No results to write")
