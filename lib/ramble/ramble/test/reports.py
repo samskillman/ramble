@@ -32,10 +32,8 @@ results = {
             "RAMBLE_STATUS": "SUCCESS",
             "name": "exp_1",
             "n_nodes": 1,
-            # "application_namespace": "test_app",
-            # "workload_name": "test_workload",
             "simplified_workload_namespace": "test_app_test_workload",
-            "RAMBLE_VARIABLES": {},
+            "RAMBLE_VARIABLES": {"repeat_index": "0"},
             "RAMBLE_RAW_VARIABLES": {},
             "CONTEXTS": [
                 {
@@ -66,10 +64,8 @@ results = {
             "RAMBLE_STATUS": "SUCCESS",
             "name": "exp_2",
             "n_nodes": 2,
-            # "application_namespace": "test_namespace",
-            # "workload_name": "test_workload",
             "simplified_workload_namespace": "test_app_test_workload",
-            "RAMBLE_VARIABLES": {},
+            "RAMBLE_VARIABLES": {"repeat_index": "0"},
             "RAMBLE_RAW_VARIABLES": {},
             "CONTEXTS": [
                 {
@@ -118,6 +114,7 @@ def create_test_exp(
     fv,
     ifv,
     normalized=False,
+    repeat_index="0",
 ):
     test_exp_dict = {
         "RAMBLE_STATUS": success,
@@ -128,12 +125,13 @@ def create_test_exp(
         "RAMBLE_RAW_VARIABLES": ramble_raw_vars,
         "context": context,
         "fom_name": fom_name,
+        "fom_type": fom_type,
+        "better_direction": better_direction,
         "fom_value": fom_value,
         "fom_units": units,
         "fom_origin": origin,
         "fom_origin_type": origin_type,
-        "fom_type": fom_type,
-        "better_direction": better_direction,
+        "repeat_index": repeat_index,
         "series": ns,
         "normalized_fom_value" if normalized else "fom_value": fv,
     }
@@ -169,7 +167,7 @@ def test_scaling_plots(mutable_mock_workspace_path, tmpdir_factory, values):
             "exp_1",
             1,
             "test_app_test_workload",
-            {},
+            {"repeat_index": "0"},
             {},
             "null",
             fom_name,
@@ -190,7 +188,7 @@ def test_scaling_plots(mutable_mock_workspace_path, tmpdir_factory, values):
             "exp_2",
             2,
             "test_app_test_workload",
-            {},
+            {"repeat_index": "0"},
             {},
             "null",
             fom_name,
@@ -211,11 +209,10 @@ def test_scaling_plots(mutable_mock_workspace_path, tmpdir_factory, values):
     # Update index to match
     ideal_df = ideal_df.set_index("n_nodes")
 
-    ideal_df[["RAMBLE_VARIABLES", "RAMBLE_RAW_VARIABLES", "fom_units"]] = ideal_df[
-        ["RAMBLE_VARIABLES", "RAMBLE_RAW_VARIABLES", "fom_units"]
+    ideal_df[["RAMBLE_VARIABLES", "RAMBLE_RAW_VARIABLES", "repeat_index", "fom_units"]] = ideal_df[
+        ["RAMBLE_VARIABLES", "RAMBLE_RAW_VARIABLES", "repeat_index", "fom_units"]
     ].astype(object)
 
-    # TODO: test things like log
     logx = False
     logy = False
     split_by = "simplified_workload_namespace"
@@ -242,8 +239,6 @@ repeat_results = {
             "RAMBLE_STATUS": "SUCCESS",
             "name": "repeat_exp_1",
             "n_nodes": 1,
-            # "application_namespace": "test_app",
-            # "workload_name": "test_workload",
             "simplified_workload_namespace": "test_app_test_workload",
             "N_REPEATS": 2,
             "RAMBLE_VARIABLES": {"repeat_index": 0},
@@ -301,8 +296,6 @@ repeat_results = {
             "RAMBLE_STATUS": "SUCCESS",
             "name": "repeat_exp_1.1",
             "n_nodes": 2,
-            # "application_namespace": "test_namespace",
-            # "workload_name": "test_workload",
             "simplified_workload_namespace": "test_app_test_workload",
             "N_REPEATS": 0,
             "RAMBLE_VARIABLES": {"repeat_index": 1},
@@ -336,8 +329,6 @@ repeat_results = {
             "RAMBLE_STATUS": "SUCCESS",
             "name": "repeat_exp_1.2",
             "n_nodes": 2,
-            # "application_namespace": "test_namespace",
-            # "workload_name": "test_workload",
             "simplified_workload_namespace": "test_app_test_workload",
             "N_REPEATS": 0,
             "RAMBLE_VARIABLES": {"repeat_index": 2},
@@ -371,10 +362,8 @@ repeat_results = {
             "RAMBLE_STATUS": "SUCCESS",
             "name": "single_exp_1",
             "n_nodes": 1,
-            # "application_namespace": "test_app",
-            # "workload_name": "test_workload",
             "simplified_workload_namespace": "test_app_test_workload",
-            "RAMBLE_VARIABLES": {},
+            "RAMBLE_VARIABLES": {"repeat_index": "0"},
             "RAMBLE_RAW_VARIABLES": {},
             "CONTEXTS": [
                 {
@@ -407,7 +396,6 @@ def test_repeat_import(mutable_mock_workspace_path):
     where_query = None
     results_df = prepare_data(repeat_results, where_query)
 
-    print(results_df)
     # DF contains only summary exp and not individual repeats
     assert "repeat_exp_1" in results_df.values
     assert "repeat_exp_1.1" not in results_df.values
@@ -423,6 +411,7 @@ def test_repeat_import(mutable_mock_workspace_path):
     assert single_exp_rows["fom_value"].values == [42.0]
 
 
+# TODO: test things like log
 # TODO: test fom plot
 # TODO: test compare plot
 
