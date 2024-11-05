@@ -638,7 +638,7 @@ _ramble_workspace() {
     then
         RAMBLE_COMPREPLY="-h --help"
     else
-        RAMBLE_COMPREPLY="activate archive deactivate create concretize setup analyze push-to-cache info edit mirror list ls remove rm generate-config manage"
+        RAMBLE_COMPREPLY="activate archive deactivate create concretize setup analyze push-to-cache info edit mirror experiment-logs list ls remove rm generate-config manage"
     fi
 }
 
@@ -694,6 +694,10 @@ _ramble_workspace_edit() {
 
 _ramble_workspace_mirror() {
     RAMBLE_COMPREPLY="-h --help -d --dry-run --phases --include-phase-dependencies --where --exclude-where"
+}
+
+_ramble_workspace_experiment_logs() {
+    RAMBLE_COMPREPLY="-h --help --limit-one --first-failed --failed --where --exclude-where --filter-tags"
 }
 
 _ramble_workspace_list() {
