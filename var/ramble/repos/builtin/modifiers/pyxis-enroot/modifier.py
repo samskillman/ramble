@@ -26,7 +26,7 @@ class PyxisEnroot(BasicModifier):
 
 
     This modifier requires the following input variables:
-    - container_url: This needs to be a container URI that is formatted for and
+    - container_uri: This needs to be a container URI that is formatted for and
                     `enroot import` command. For examples, see
                     https://github.com/NVIDIA/enroot/blob/master/doc/cmd/import.md
     - container_name: This is the name of the resulting squashfs file that enroot produces
