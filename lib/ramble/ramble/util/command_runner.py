@@ -20,7 +20,7 @@ class CommandRunner:
     Can be inherited to construct custom command runners.
     """
 
-    def __init__(self, name=None, command=None, shell="bash", dry_run=False):
+    def __init__(self, name=None, command=None, shell="bash", dry_run=False, path=None):
         """
         Ensure required command is found in the path
         """
@@ -29,7 +29,10 @@ class CommandRunner:
         self.shell = shell
         required = not self.dry_run
         try:
-            self.command = which(command, required=required)
+            if path is None:
+                self.command = which(command, required=required)
+            else:
+                self.command = which(command, required=required, path=path)
         except CommandNotFoundError:
             raise RunnerError(f"Command {name} is not found in path")
 
