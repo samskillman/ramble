@@ -438,7 +438,7 @@ class PyNemo(ExecutableApplication):
     )
     workload_variable(
         "exp_manager.checkpoint_callback_params.filename",
-        default="megatron_gpt--\{val_loss:.2f\}-\{step\}-\{consumed_samples\}",
+        default=r"megatron_gpt--\{val_loss:.2f\}-\{step\}-\{consumed_samples\}",
         description="Filename for checkpoint params",
         workload_group="pretraining",
     )
