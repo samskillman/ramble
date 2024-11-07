@@ -483,7 +483,7 @@ def workspace_setup(args):
     logger.debug("Setting up workspace")
     pipeline = pipeline_cls(ws, filters)
 
-    with ws.write_transaction():
+    with ws.read_transaction():
         workspace_run_pipeline(args, pipeline)
 
 
@@ -554,7 +554,7 @@ def workspace_analyze(args):
         summary_only=args.summary_only,
     )
 
-    with ws.write_transaction():
+    with ws.read_transaction():
         workspace_run_pipeline(args, pipeline)
 
 

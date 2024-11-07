@@ -72,7 +72,7 @@ def ramble_on(args):
         suppress_run_header=suppress_run_header,
     )
 
-    with ws.write_transaction():
+    with ws.read_transaction():
         pipeline.run()
 
 
