@@ -76,7 +76,7 @@ class Ethtool(BasicModifier):
     def run_ethtool(self):
         cmds = [
             # TODO: extend to support multiple vNICs
-            "eth_dev=$(ip --br l | awk '$1 !~ /^lo/ { print $1 }')",
+            "eth_dev=$(ip --br l | awk '$1 !~ /^lo/ { print $1 }' | head -n1)",
         ]
 
         def check_hostlist():
@@ -166,10 +166,12 @@ class Ethtool(BasicModifier):
         output_format="{config_name}",
     )
 
-    for metric in ["RX", "TX", "Combine"]:
+    for metric in ["RX", "TX", "Combined"]:
         figure_of_merit(
             metric,
-            fom_regex=rf"{metric}:\s*(?P<count>\w*)",
+            # When a channel setting is not available, it gives out "n/a".
+            # Match only digits to avoid capturing the unsupported metrics.
+            fom_regex=rf"{metric}:\s*(?P<count>\d+)",
             log_file="{experiment_run_dir}/ethtool_out",
             group_name="count",
             units="",
@@ -179,7 +181,8 @@ class Ethtool(BasicModifier):
     # FOMs on coalesce options
     figure_of_merit(
         "adaptive_rx",
-        fom_regex=r"Adaptive RX:\s*(?P<adaptive_rx>\S+)",
+        # both adaptive rx and tx can only be on/off
+        fom_regex=r"Adaptive RX:\s*(?P<adaptive_rx>off|on)",
         log_file="{experiment_run_dir}/ethtool_out",
         group_name="adaptive_rx",
         units="",
@@ -187,12 +190,13 @@ class Ethtool(BasicModifier):
 
     figure_of_merit(
         "adaptive_tx",
-        fom_regex=r"Adaptive RX:.*TX:\s*(?P<adaptive_tx>\S+)",
+        fom_regex=r"Adaptive RX:.*TX:\s*(?P<adaptive_tx>off|on)",
         log_file="{experiment_run_dir}/ethtool_out",
         group_name="adaptive_tx",
         units="",
     )
 
+    # All these options should output either number or n/a, the latter is ignored.
     coalesce_options = [
         "stats-block-usecs",
         "sample-interval",
@@ -219,7 +223,7 @@ class Ethtool(BasicModifier):
     for opt in coalesce_options:
         figure_of_merit(
             opt,
-            fom_regex=rf"{opt}:\s*(?P<metric>\S*)",
+            fom_regex=rf"{opt}:\s*(?P<metric>\d+)",
             log_file="{experiment_run_dir}/ethtool_out",
             group_name="metric",
             units="",
