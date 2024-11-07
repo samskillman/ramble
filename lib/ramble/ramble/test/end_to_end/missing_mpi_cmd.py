@@ -28,6 +28,8 @@ workspace = RambleCommand("workspace")
 def test_missing_mpi_cmd():
     test_config = """
 ramble:
+  variants:
+    package_manager: None
   variables:
     mpi_command: ''
     batch_submit: 'batch_submit {execute_experiment}'
@@ -44,9 +46,6 @@ ramble:
             single-node-test:
               variables:
                 n_nodes: '1'
-  spack:
-    packages: {}
-    environments: {}
 """
     workspace_name = "test-missing-mpi-cmd"
     ws = ramble.workspace.create(workspace_name)
