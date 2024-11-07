@@ -35,7 +35,12 @@ class Apptainer(BasicModifier):
     mode("standard", description="Standard execution mode for apptainer")
     default_mode("standard")
 
+    # The container_name variable controls the name of the resulting container file.
+    # It will be of the format {container_name}.{container_extension}
     required_variable("container_name")
+
+    # The container_uri variable controls the URI the container is pulled from.
+    # This should be of the format that would be input into `apptainer pull <uri>`.
     required_variable("container_uri")
 
     modifier_variable(
@@ -191,9 +196,8 @@ class Apptainer(BasicModifier):
                 and expanded_exp_mount not in input_mounts
             ):
                 add_mod = self._usage_mode not in self.variable_modifications
-                add_mod = (
-                    add_mod
-                    or self._usage_mode in self.variable_modifications
+                add_mod = add_mod or (
+                    self._usage_mode in self.variable_modifications
                     and "container_mounts"
                     not in self.variable_modifications[self._usage_mode]
                 )
