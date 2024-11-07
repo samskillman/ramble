@@ -16,8 +16,6 @@ from ramble.application import ApplicationError
 from ramble.pkgmankit import *
 
 import ramble.config
-from ramble.error import RambleError
-from ramble.util.executable import which
 from ramble.util.hashing import hash_string
 from ramble.util.logger import logger
 from ramble.util.shell_utils import source_str
@@ -254,7 +252,7 @@ def _extract_pkg_name(pkg_spec):
     return match.group("pkg_name") if match else None
 
 
-class PipRunner:
+class PipRunner(ramble.util.command_runner.CommandRunner):
     """Runner for executing pip+venv commands."""
 
     _venv_name = ".venv"
@@ -264,10 +262,10 @@ class PipRunner:
     install_config_name = "config:pip:install"
 
     def __init__(self, dry_run=False):
-        self.bs_python = None
+        super().__init__(name="pip", command=sys.executable, dry_run=dry_run)
+        self.bs_python = self.command
         self.env_path = None
         self.configs = []
-        self.dry_run = dry_run
         self.specs = set()
         self.installed = False
 
@@ -289,9 +287,9 @@ class PipRunner:
 
         if not self.dry_run:
             if not os.path.exists(os.path.join(env_path, self._venv_name)):
-                bs_python = self.get_bootstrap_python()
-                bs_python(
-                    "-m", "venv", os.path.join(env_path, self._venv_name)
+                self.execute(
+                    self.bs_python,
+                    ["-m", "venv", os.path.join(env_path, self._venv_name)],
                 )
 
         # Ensure subsequent commands use the created env now.
@@ -299,7 +297,7 @@ class PipRunner:
 
     def _get_venv_python(self):
         if self.dry_run:
-            return self.get_bootstrap_python().copy()
+            return self.bs_python.copy()
         return Executable(
             os.path.join(self.env_path, self._venv_name, "bin", "python")
         )
@@ -321,21 +319,15 @@ class PipRunner:
         )
         install_args = ["install", "-r", req_file, *installer_flags]
         freeze_args = ["freeze", "-r", req_file]
-        if self.dry_run:
-            self._dry_run_print(installer, install_args)
-            self._dry_run_print(installer, freeze_args)
-        else:
-            installer(*install_args)
+        self.execute(installer, install_args)
+        out = self.execute(installer, freeze_args, return_output=True)
+        if out is not None:
             lock_file = os.path.join(self.env_path, self._lock_file_name)
             with open(lock_file, "w") as f:
-                installer(*freeze_args, output=f)
+                f.write(out)
         self.installed = True
 
     def get_bootstrap_python(self):
-        if not self.bs_python:
-            # Set up python for bootstrapping.
-            # Simply use the same interpreter as the current Ramble.
-            self.bs_python = which(sys.executable, required=True)
         return self.bs_python
 
     def _get_activate_script_path(self):
@@ -353,8 +345,7 @@ class PipRunner:
 
     def generate_activate_command(self):
         """Generate a command to activate a virtual env"""
-        shell = ramble.config.get("config:shell")
-        return [f"{source_str(shell)} {self._get_activate_script_path()}"]
+        return [f"{source_str(self.shell)} {self._get_activate_script_path()}"]
 
     def generate_deactivate_command(self):
         """Generate a command to deactivate a virtual env"""
@@ -425,8 +416,12 @@ class PipRunner:
                 "or requirements.txt file"
             )
         ext_python = Executable(ext_python_path)
-        with open(dest, "w") as f:
-            ext_python("-m", "pip", "freeze", output=f)
+        out = self.execute(
+            ext_python, ["-m", "pip", "freeze"], return_output=True
+        )
+        if out is not None:
+            with open(dest, "w") as f:
+                f.write(out)
 
     def define_path_vars(self, app_inst, cache):
         """Define path variables"""
@@ -470,7 +465,7 @@ class PipRunner:
         exe.add_default_arg("pip")
         exe.add_default_arg("show")
         for pkg in unresolved_pkgs:
-            pkg_info_raw = exe(pkg, output=str)
+            pkg_info_raw = self.execute(exe, [pkg], return_output=True)
             pkg_path = None
             for line in pkg_info_raw.split(os.linesep):
                 info = line.split(":")
@@ -500,8 +495,9 @@ class PipRunner:
         # The bootstrap python should have the same version as the venv one.
         # Use the bootstrap one here as get_version may be called (for instance for compute hash)
         # before the venv environment is constructed.
-        exe = self.get_bootstrap_python()
-        out = exe("-m", "pip", "--version", output=str)
+        out = self.execute(
+            self.bs_python, ["-m", "pip", "--version"], return_output=True
+        )
         match = re.search(r"pip (?P<version>[\d.]+) from", out).group(
             "version"
         )
@@ -581,11 +577,3 @@ class PipRunner:
 
                     if info_dict:
                         yield info_dict
-
-    def _dry_run_print(self, executable, args):
-        logger.msg(f"DRY-RUN: would run {executable}")
-        logger.msg(f"         with args: {args}")
-
-
-class RunnerError(RambleError):
-    """Raised when a problem occurs with a pip+venv environment"""
