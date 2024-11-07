@@ -2240,3 +2240,29 @@ def test_workspace_info_software(request):
     assert "spack-pkg" in output
     assert "pip-test" in output
     assert "spack-test" not in output
+
+
+def test_workspace_no_empty_workloads(request):
+    workspace_name = request.node.name
+    global_args = ["-w", workspace_name]
+
+    with ramble.workspace.create(workspace_name) as ws:
+        ws.write()
+
+        workspace(
+            "manage",
+            "experiments",
+            "basic",
+            "--wf",
+            "nothing*",
+            "-v",
+            "n_nodes=1",
+            "-v",
+            "n_ranks=1",
+            global_args=global_args,
+        )
+
+        with open(ws.config_file_path) as f:
+            data = f.read()
+            assert "basic:" not in data
+            assert "workloads: {}" not in data
