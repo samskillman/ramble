@@ -2023,6 +2023,10 @@ ramble:
             workspace_dict[namespace.ramble][namespace.application] = syaml.syaml_dict()
         return workspace_dict[namespace.ramble][namespace.application]
 
+    def read_transaction(self):
+        """Get a read lock context manager for use in a `with` block."""
+        return lk.ReadTransaction(self.txlock, acquire=self._re_read)
+
     def write_transaction(self):
         """Get a write lock context manager for use in a `with` block."""
         return lk.WriteTransaction(self.txlock, acquire=self._re_read)
