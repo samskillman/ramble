@@ -106,6 +106,7 @@ class ApplicationBase(metaclass=ApplicationMeta):
         "pushdeployment",
         "pushtocache",
         "execute",
+        "logs",
     ]
     _language_classes = [ApplicationMeta, SharedMeta]
 
