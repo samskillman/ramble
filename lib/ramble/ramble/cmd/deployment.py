@@ -14,7 +14,6 @@ import spack.util.spack_json as sjson
 import spack.util.url as surl
 
 import ramble.cmd
-import ramble.cmd.common.arguments
 import ramble.cmd.common.arguments as arguments
 
 import ramble.fetch_strategy
@@ -102,6 +101,7 @@ def deployment_pull_setup_parser(subparser):
         "-p",
         dest="deployment_path",
         help="Path to deployment that should be pulled",
+        required=True,
     )
 
 
