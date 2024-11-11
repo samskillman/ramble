@@ -83,6 +83,8 @@ def exp_dict():
         ('"foo123" not in "{env_name}"', "True", set(), 1),
         ('"foo" not in "{env_name}"', "False", set(), 1),
         ('"{env_name}"[:{max_len}:1]', "spack_foo", set(), 1),
+        ("not_a_slice[0]", "not_a_slice[0]", set(), 1),
+        ("not_a_valid_slice[0:a]", "not_a_valid_slice[0:a]", set(), 1),
     ],
 )
 def test_expansions(input, output, no_expand_vars, passes):
