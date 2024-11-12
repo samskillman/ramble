@@ -651,9 +651,7 @@ class StrongScalingPlot(ScalingPlotGenerator):
         to_col=ReportVars.NORMALIZED_FOM_VALUE.value,
         from_col=ReportVars.FOM_VALUE.value,
     ):
-        super().normalize_data(
-            data, scale_to_index, to_col=to_col, from_col=from_col
-        )
+        super().normalize_data(data, scale_to_index, to_col=to_col, from_col=from_col)
 
     def draw(self, perf_measure, scale_var, series):
         y_label = perf_measure
@@ -706,12 +704,14 @@ class FomPlot(PlotGenerator):
 
     # TODO: dry bar plot drawing
     def draw(self, perf_measure, scale_var, series, unit):
-        try:
-            self.output_df[ReportVars.FOM_VALUE.value] = to_numeric_if_possible(
-                self.output_df[ReportVars.FOM_VALUE.value]
-            )
 
-        except ValueError:
+        self.output_df[ReportVars.FOM_VALUE.value] = to_numeric_if_possible(
+            self.output_df[ReportVars.FOM_VALUE.value]
+        )
+
+        from pandas.api.types import is_numeric_dtype
+
+        if not is_numeric_dtype(self.output_df[ReportVars.FOM_VALUE.value]):
             logger.warn(f"Skipping drawing of non numeric FOM: {perf_measure}")
             return
 
@@ -824,7 +824,10 @@ class MultiLinePlot(ScalingPlotGenerator):
         from_col=ReportVars.FOM_VALUE.value,
     ):
         super().normalize_data(
-            data, scale_to_index, to_col=to_col, from_col=from_col,
+            data,
+            scale_to_index,
+            to_col=to_col,
+            from_col=from_col,
         )
 
     def draw(self, perf_measure, scale_var, series):
