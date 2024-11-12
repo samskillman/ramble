@@ -28,6 +28,7 @@ default_keys = {
     "license_input_dir": {"type": key_type.reserved, "level": output_level.variable},
     "experiments_file": {"type": key_type.reserved, "level": output_level.key},
     "experiment_name": {"type": key_type.reserved, "level": output_level.key},
+    "experiment_hash": {"type": key_type.reserved, "level": output_level.key},
     "experiment_run_dir": {"type": key_type.reserved, "level": output_level.variable},
     "experiment_status": {"type": key_type.reserved, "level": output_level.key},
     "experiment_index": {"type": key_type.reserved, "level": output_level.variable},
