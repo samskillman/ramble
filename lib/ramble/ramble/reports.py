@@ -312,7 +312,6 @@ class PlotGenerator:
 
         self.split_by = split_by
 
-        # TODO: enable more robustly
         self.have_statistics = False
         self.better_direction = BetterDirection.INDETERMINATE
 
@@ -322,10 +321,7 @@ class PlotGenerator:
         scale_to_index=False,
         to_col=ReportVars.NORMALIZED_FOM_VALUE.value,
         from_col=ReportVars.FOM_VALUE.value,
-        speedup=False,
     ):
-        # FIXME: do we need to support more than normalizing by the first
-        # value?
         if data[from_col].iloc[0] == 0:
             raise ArithmeticError(
                 "Unable to normalize data. The first value in the series cannot be zero."
@@ -334,19 +330,11 @@ class PlotGenerator:
             # Adjusts first y-value to first scale var when >1 (e.g., speedup for 2+ nodes = 2)
             if scale_to_index:
                 # Performs inplace edit on data, no need to return
-                if speedup:
-                    data.loc[:, to_col] = (
-                        data[from_col].iloc[0] / data.loc[:, from_col]
-                    ) * data.index[0]
-                else:
-                    data.loc[:, to_col] = (
-                        data.loc[:, from_col] / data[from_col].iloc[0]
-                    ) * data.index[0]
+                data.loc[:, to_col] = (
+                    data.loc[:, from_col] / data[from_col].iloc[0]
+                ) * data.index[0]
             else:
-                if speedup:
-                    data.loc[:, to_col] = data[from_col].iloc[0] / data.loc[:, from_col]
-                else:
-                    data.loc[:, to_col] = data.loc[:, from_col] / data[from_col].iloc[0]
+                data.loc[:, to_col] = data.loc[:, from_col] / data[from_col].iloc[0]
 
     def add_minmax_data(self, selected_data, min_data, max_data, scale_var):
         """When using summary statistics from repeats, adds columns fom_value_min and fom_value_max
@@ -529,8 +517,6 @@ class ScalingPlotGenerator(PlotGenerator):
 
             self.validate_data(series_results)
 
-            # TODO: We interpret this as requesting speedup, which isn't strictly true
-            # We need a more clear semantic for this
             if self.normalize:
                 try:
                     self.normalize_data(series_results, scale_to_index=True)
@@ -631,10 +617,7 @@ class ScalingPlotGenerator(PlotGenerator):
 
 class WeakScalingPlot(ScalingPlotGenerator):
     def draw(self, perf_measure, scale_var, series):
-        if self.normalize:
-            y_label = "Efficiency"
-        else:
-            y_label = perf_measure
+        y_label = perf_measure
 
         super().draw(perf_measure, scale_var, series, y_label)
 
@@ -667,17 +650,13 @@ class StrongScalingPlot(ScalingPlotGenerator):
         scale_to_index=True,
         to_col=ReportVars.NORMALIZED_FOM_VALUE.value,
         from_col=ReportVars.FOM_VALUE.value,
-        speedup=True,
     ):
         super().normalize_data(
-            data, scale_to_index, to_col=to_col, from_col=from_col, speedup=speedup
+            data, scale_to_index, to_col=to_col, from_col=from_col
         )
 
     def draw(self, perf_measure, scale_var, series):
-        if self.normalize:
-            y_label = "Speedup"
-        else:
-            y_label = perf_measure
+        y_label = perf_measure
 
         super().draw(perf_measure, scale_var, series, y_label)
 
@@ -697,6 +676,7 @@ class FomPlot(PlotGenerator):
             series_results.loc[:, ReportVars.FOM_VALUE.value] = to_numeric_if_possible(
                 series_results[ReportVars.FOM_VALUE.value]
             )
+
             series_results.loc[:, scale_var] = to_numeric_if_possible(series_results[scale_var])
 
             series_results = series_results.set_index(scale_var)
@@ -730,6 +710,7 @@ class FomPlot(PlotGenerator):
             self.output_df[ReportVars.FOM_VALUE.value] = to_numeric_if_possible(
                 self.output_df[ReportVars.FOM_VALUE.value]
             )
+
         except ValueError:
             logger.warn(f"Skipping drawing of non numeric FOM: {perf_measure}")
             return
@@ -820,7 +801,6 @@ class ComparisonPlot(PlotGenerator):
         # print(f'raw values = {len(raw_results)}  vs pivot values = {len(compare_pivot)} x
         # {len(compare_pivot.columns)} ={len(compare_pivot) * len(compare_pivot.columns)}')
 
-        # TODO: empty is silly here.. as is changing types
         perf_measure = foms
         scale_var = ""
         series = dimensions
@@ -842,17 +822,13 @@ class MultiLinePlot(ScalingPlotGenerator):
         scale_to_index=True,
         to_col=ReportVars.NORMALIZED_FOM_VALUE.value,
         from_col=ReportVars.FOM_VALUE.value,
-        speedup=True,
     ):
         super().normalize_data(
-            data, scale_to_index, to_col=to_col, from_col=from_col, speedup=speedup
+            data, scale_to_index, to_col=to_col, from_col=from_col,
         )
 
     def draw(self, perf_measure, scale_var, series):
-        if self.normalize:
-            y_label = "Speedup"
-        else:
-            y_label = perf_measure
+        y_label = perf_measure
 
         super().draw(perf_measure, scale_var, series, y_label)
 
@@ -917,11 +893,7 @@ class MultiLinePlot(ScalingPlotGenerator):
         super().generate_plot_data()
 
         perf_measure, scale_var, *additional_vars = self.spec
-
-        if self.normalize:
-            y_label = "Speedup"
-        else:
-            y_label = perf_measure
+        y_label = perf_measure
 
         self.draw_multiline(perf_measure, scale_var, y_label)
 
