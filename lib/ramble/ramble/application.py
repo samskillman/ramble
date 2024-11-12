@@ -1489,6 +1489,7 @@ class ApplicationBase(metaclass=ApplicationMeta):
             self.package_manager.populate_inventory(workspace, force_compute, require_exist)
 
         self.experiment_hash = ramble.util.hashing.hash_json(self.hash_inventory)
+        self.variables[self.keywords.experiment_hash] = self.experiment_hash
 
     register_phase("write_inventory", pipeline="setup", run_after=["make_experiments"])
 
