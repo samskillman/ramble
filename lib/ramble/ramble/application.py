@@ -16,6 +16,7 @@ import string
 import shutil
 import fnmatch
 import time
+import operator
 from typing import List
 
 import llnl.util.filesystem as fs
@@ -1942,6 +1943,9 @@ class ApplicationBase(metaclass=ApplicationMeta):
 
                     context_map["foms"].append(fom_calc_dict)
 
+            # Display the FOMs in alphabetic order, even if the corresponding log entries
+            # may be in different ordering.
+            context_map["foms"].sort(key=operator.itemgetter("name"))
             results.append(context_map)
 
         if results:
