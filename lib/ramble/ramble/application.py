@@ -1902,6 +1902,7 @@ class ApplicationBase(metaclass=ApplicationMeta):
                 "display_name": _get_context_display_name(context),
             }
 
+            summary_foms = []
             if context == _NULL_CONTEXT:
                 n_total_dict = {
                     "value": self.repeats.n_repeats,
@@ -1910,7 +1911,7 @@ class ApplicationBase(metaclass=ApplicationMeta):
                     "origin_type": "summary::n_total_repeats",
                     "name": "Experiment Summary",
                 }
-                context_map["foms"].append(n_total_dict)
+                summary_foms.append(n_total_dict)
 
                 # Use the first FOM to count how many successful repeats values are present
                 n_success_dict = {
@@ -1920,7 +1921,7 @@ class ApplicationBase(metaclass=ApplicationMeta):
                     "origin_type": "summary::n_successful_repeats",
                     "name": "Experiment Summary",
                 }
-                context_map["foms"].append(n_success_dict)
+                summary_foms.append(n_success_dict)
 
             for fom_key, fom_values in fom_dict.items():
                 fom_name = fom_key[0]
@@ -1946,6 +1947,8 @@ class ApplicationBase(metaclass=ApplicationMeta):
             # Display the FOMs in alphabetic order, even if the corresponding log entries
             # may be in different ordering.
             context_map["foms"].sort(key=operator.itemgetter("name"))
+            if context == _NULL_CONTEXT:
+                context_map["foms"] = summary_foms + context_map["foms"]
             results.append(context_map)
 
         if results:
