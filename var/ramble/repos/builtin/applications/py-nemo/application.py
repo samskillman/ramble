@@ -1093,7 +1093,12 @@ class PyNemo(ExecutableApplication):
         workload_group="pretraining",
     )
 
-    processed_log_name = "{experiment_run_dir}/processed_{experiment_name}.out"
+    workload_variable(
+        "processed_log_file",
+        default="{experiment_run_dir}/processed_{experiment_name}.out",
+        description="Path to store processed NeMo output",
+        workload_group="pretraining",
+    )
 
     final_epoch_regex = (
         r"Epoch (?P<epoch_id>[0-9]+):\s+:\s+(?P<pct_complete>[0-9]+)%.*\s+"
@@ -1108,19 +1113,19 @@ class PyNemo(ExecutableApplication):
         "Final Epoch ID",
         fom_regex=final_epoch_regex,
         group_name="epoch_id",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
     )
     figure_of_merit(
         "Final Step ID",
         fom_regex=final_epoch_regex,
         group_name="step_idx",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
     )
     figure_of_merit(
         "Final Elapsed Time",
         fom_regex=final_epoch_regex,
         group_name="elapsed_time",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
     )
     figure_of_merit(
         "Final Elapsed Seconds",
@@ -1132,13 +1137,13 @@ class PyNemo(ExecutableApplication):
         "Final Remaining Time",
         fom_regex=final_epoch_regex,
         group_name="remaining_time",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
     )
     figure_of_merit(
         "Final Step Timing",
         fom_regex=final_epoch_regex,
         group_name="train_step_timing",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
     )
 
     per_epoch_regex = (
@@ -1157,7 +1162,7 @@ class PyNemo(ExecutableApplication):
         "Epoch ID",
         fom_regex=per_epoch_regex,
         group_name="epoch_id",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
         contexts=[epoch_context_name],
     )
     figure_of_merit(
@@ -1165,56 +1170,56 @@ class PyNemo(ExecutableApplication):
         fom_regex=per_epoch_regex,
         group_name="pct_complete",
         units="%",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
         contexts=[epoch_context_name],
     )
     figure_of_merit(
         "Step ID",
         fom_regex=per_epoch_regex,
         group_name="step_idx",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
         contexts=[epoch_context_name],
     )
     figure_of_merit(
         "Elapsed Time",
         fom_regex=per_epoch_regex,
         group_name="elapsed_time",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
         contexts=[epoch_context_name],
     )
     figure_of_merit(
         "Remaining Time",
         fom_regex=per_epoch_regex,
         group_name="remaining_time",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
         contexts=[epoch_context_name],
     )
     figure_of_merit(
         "v_num",
         fom_regex=r"Epoch.*v_num=(?P<v_num>\S+)[,\]]",
         group_name="v_num",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
         contexts=[epoch_context_name],
     )
     figure_of_merit(
         "reduced_train_loss",
         fom_regex=r"Epoch.*reduced_train_loss=(?P<reduced_train_loss>[0-9\.]+)[,\]]",
         group_name="reduced_train_loss",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
         contexts=[epoch_context_name],
     )
     figure_of_merit(
         "global_step",
         fom_regex=r"Epoch.*global_step=(?P<global_step>[0-9\.]+)[,\]]",
         group_name="global_step",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
         contexts=[epoch_context_name],
     )
     figure_of_merit(
         "consumed_samples",
         fom_regex=r"Epoch.*consumed_samples=(?P<consumed_samples>[0-9\.]+)[,\]]",
         group_name="consumed_samples",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
         contexts=[epoch_context_name],
     )
     figure_of_merit(
@@ -1222,8 +1227,15 @@ class PyNemo(ExecutableApplication):
         fom_regex=r"Epoch.*train_step_timing in s=(?P<train_step_time>[0-9\.]+)[,\]]",
         group_name="train_step_time",
         units="s",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
         contexts=[epoch_context_name],
+    )
+
+    success_criteria(
+        "training-complete",
+        mode="string",
+        match=".*`Trainer.fit` stopped: `max_steps=.*` reached.",
+        file="{processed_log_file}",
     )
 
     register_phase(
@@ -1374,7 +1386,18 @@ class PyNemo(ExecutableApplication):
             with open(log_file, "r", encoding="ISO-8859-1") as f:
                 data = f.read()
 
-            with open(log_file, "r", encoding="ISO-8859-1") as f:
+            processed_log = self.expander.expand_var(
+                "{experiment_run_dir}/processed_{experiment_name}.out"
+            )
+
+            with open(processed_log, "w+") as f:
+                f.write(
+                    data.replace("\x13", "\n")
+                    .replace("\x96\x88", "")
+                    .replace("â", "")
+                )
+
+            with open(processed_log) as f:
                 for line in f.readlines():
                     m = final_regex.match(line)
 
@@ -1389,17 +1412,6 @@ class PyNemo(ExecutableApplication):
                             part_s += int(part) * mult
                             mult = mult * 60
                         elapsed_s += part_s
-
-            processed_log = self.expander.expand_var(
-                "{experiment_run_dir}/processed_{experiment_name}.out"
-            )
-
-            with open(processed_log, "w+") as f:
-                f.write(
-                    data.replace("\x13", "\n")
-                    .replace("\x96\x88", "")
-                    .replace("â", "")
-                )
 
             sec_file_path = self.expander.expand_var(
                 "{experiment_run_dir}/elapsed_seconds"
