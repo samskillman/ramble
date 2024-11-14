@@ -23,6 +23,7 @@ import ramble.pipeline
 import ramble.util.path
 from ramble.util.foms import BetterDirection, FomType
 from ramble.util.logger import logger
+from ramble.util.file_util import create_simlink
 
 try:
     import matplotlib.pyplot as plt
@@ -437,6 +438,7 @@ class PlotGenerator:
         self.write(fig, chart_filename)
 
     def draw_filler(self, perf_measure, scale_var, series, exception):
+        # FIXME: DRY THIS
         """Draws a filler figure in cases where a chart cannot be drawn due to errors."""
         title = f"{perf_measure} vs {scale_var} for {series}"
         logger.debug(f"Generating filler figure for {title}")
@@ -918,7 +920,8 @@ def make_report(results_df, ws_name, args):
     dt = datetime.datetime.now().strftime("%Y-%m-%d_%H.%M.%S")
     report_dir_root = get_reports_path()
 
-    report_name = f"{ws_name}.{dt}"
+    report_base = f"{ws_name}"
+    report_name = f"{report_base}.{dt}"
     report_dir_path = os.path.join(report_dir_root, report_name)
     fs.mkdirp(report_dir_path)
     pdf_path = os.path.join(report_dir_path, f"{report_name}.pdf")
@@ -935,6 +938,17 @@ def make_report(results_df, ws_name, args):
                 plot.generate_plot_data()
 
     if os.path.isfile(pdf_path):
+
+        # Simlink specific workspace latest file
+        latest_file = f"{report_base}.latest.pdf"
+        latest_path = os.path.join(report_dir_root, latest_file)
+        create_simlink(pdf_path, latest_path)
+
+        # Also produce a generic known path
+        latest_file = "reports.latest.pdf"
+        latest_path = os.path.join(report_dir_root, latest_file)
+        create_simlink(pdf_path, latest_path)
+
         logger.msg(
             "Report generated successfully. A PDF summary is available at:\n" f"    {pdf_path}"
         )

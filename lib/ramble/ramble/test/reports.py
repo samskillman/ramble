@@ -145,7 +145,7 @@ def create_test_exp(
     "values",
     [
         (StrongScalingPlot, "fom_1", 42.0, 42.0, 42.0, 28.0, 28.0, 21.0, False),
-        (StrongScalingPlot, "fom_1", 42.0, 1.0, 1.0, 28.0, 1.5, 2.0, True),
+        (StrongScalingPlot, "fom_1", 42.0, 1.0, 1.0, 28.0, 28.0 / 42.0, 2.0, True),
         (WeakScalingPlot, "fom_2", 50, 50, None, 55, 55.0, None, False),
         (WeakScalingPlot, "fom_2", 50.0, 1.0, None, 55.0, 1.1, None, True),
     ],
