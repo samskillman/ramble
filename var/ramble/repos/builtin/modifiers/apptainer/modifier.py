@@ -35,13 +35,17 @@ class Apptainer(BasicModifier):
     mode("standard", description="Standard execution mode for apptainer")
     default_mode("standard")
 
-    # The container_name variable controls the name of the resulting container file.
-    # It will be of the format {container_name}.{container_extension}
-    required_variable("container_name")
+    required_variable(
+        "container_name",
+        description="The variable controls the name of the resulting container file. "
+        "It will be of the format {container_name}.{container_extension}.",
+    )
 
-    # The container_uri variable controls the URI the container is pulled from.
-    # This should be of the format that would be input into `apptainer pull <uri>`.
-    required_variable("container_uri")
+    required_variable(
+        "container_uri",
+        description="The variable controls the URI the container is pulled from. "
+        "This should be of the format that would be input into `apptainer pull <uri>`.",
+    )
 
     modifier_variable(
         "container_mounts",

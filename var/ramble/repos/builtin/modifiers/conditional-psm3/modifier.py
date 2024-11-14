@@ -38,7 +38,11 @@ class ConditionalPsm3(BasicModifier):
 
     executable_modifier("apply_psm3")
 
-    required_variable("psm3_mpi")
+    required_variable(
+        "psm3_mpi",
+        description="The name of the package used for MPI "
+        "within an experiment's software environment",
+    )
 
     modifier_variable(
         "apply_psm3_exec_regex",
