@@ -47,10 +47,6 @@ Multiple plot types are supported, to aid in comparison of runs and common tasks
 For these plots, common operations are supported such as log axis, data
 grouping, and idealized line plotting.
 
-While this functionality is very useful and powerful, it is not intended as a
-wholesale replacement for uploading the data into more advanced offline
-analysis tools.
-
 ^^^^^^^^^^^^^^^
 Strong and Weak Scaling Plots
 ^^^^^^^^^^^^^^^

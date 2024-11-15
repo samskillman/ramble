@@ -217,13 +217,12 @@ def test_scaling_plots(mutable_mock_workspace_path, tmpdir_factory, values):
     logy = False
     split_by = "simplified_workload_namespace"
 
+    where_query = None
+    results_df = prepare_data(results, where_query)
+    plot = plot_type(test_spec, normalize, report_dir_path, results_df, logx, logy, split_by)
+
     with PdfPages(pdf_path) as pdf_report:
-        where_query = None
-        results_df = prepare_data(results, where_query)
-        plot = plot_type(
-            test_spec, normalize, report_dir_path, pdf_report, results_df, logx, logy, split_by
-        )
-        plot.generate_plot_data()
+        plot.generate_plot_data(pdf_report)
 
         # Sort columns alphabetically, order is not important
         plot.output_df.sort_index(axis=1, inplace=True)
