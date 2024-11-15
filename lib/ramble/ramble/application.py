@@ -1915,7 +1915,7 @@ class ApplicationBase(metaclass=ApplicationMeta):
                 }
                 summary_foms.append(n_total_dict)
 
-                n_success = exp_status_list.count("SUCCESS")
+                n_success = exp_status_list.count(experiment_status.SUCCESS.name)
                 n_success_dict = {
                     "value": n_success,
                     "units": "repeats",
