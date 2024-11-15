@@ -129,41 +129,6 @@ def prepare_data(results: dict, where_query) -> pd.DataFrame:
     Transforms nested results dictionary into a flat dataframe. Each row equals
     one FOM from one context of one experiment, with columns including
     associated experiment variables (except paths and commands).
-
-    Input (dict):
-        {
-            "experiments": [
-                {"name": "exp_1",
-                 "n_nodes": 1,
-                 "CONTEXTS": [
-                    {"name": "null",
-                     "foms": [
-                        {"name": "fom_1", "value": 42.0},
-                        {"name": "fom_2", "value": 35},
-                     ]
-                    },
-                 ]
-                },
-                {"name": "exp_2",
-                 "n_nodes": 2,
-                 "CONTEXTS": [
-                    {"name": "null",
-                     "foms": [
-                        {"name": "fom_1", "value": 56.5},
-                        {"name": "fom_2", "value": 73},
-                     ]
-                    },
-                 ]
-                },
-            ]
-        }
-
-    Output (pd.DataFrame):
-             name   fom_name    fom_value  n_nodes
-        0   exp_1      fom_1         42.0        1
-        1   exp_1      fom_2           35        1
-        2   exp_2      fom_1         56.5        2
-        3   exp_2      fom_2           73        2
     """
 
     unnest_context = []
@@ -256,13 +221,8 @@ def prepare_data(results: dict, where_query) -> pd.DataFrame:
 
 
 class PlotFactory:
-    def create_plot_generators(self, args, report_dir_path, pdf_report, results_df):
-        plots = []
-        normalize = args.normalize
-        logx = args.logx
-        logy = args.logy
-        split_by = args.split_by
 
+    def determine_plot_type(self, args):
         plot_types = [
             (args.strong_scaling, StrongScalingPlot),
             (args.weak_scaling, WeakScalingPlot),
@@ -270,39 +230,38 @@ class PlotFactory:
             (args.foms, FomPlot),
             (args.multi_line, MultiLinePlot),
         ]
+        for plot_type, plot_class in plot_types:
+            if plot_type:
+                return (plot_type, plot_class)
 
-        for specs, plot_class in plot_types:
-            if specs:
-                if isinstance(specs, bool):
-                    specs = [specs]
-                for spec in specs:
-                    plots.append(
-                        plot_class(
-                            spec,
-                            normalize,
-                            report_dir_path,
-                            pdf_report,
-                            results_df,
-                            logx,
-                            logy,
-                            split_by,
-                        )
-                    )
+    def create_plot_generator(self, args, report_dir_path, results_df):
+        normalize = args.normalize
+        logx = args.logx
+        logy = args.logy
+        split_by = args.split_by
 
-        if not plots:
-            logger.die("No plots requested. Please specify required plots or see help (-h)")
-        else:
-            return plots
+        spec, plot_class = self.determine_plot_type(args)
+
+        if spec:
+            plot = plot_class(
+                spec,
+                normalize,
+                report_dir_path,
+                results_df,
+                logx,
+                logy,
+                split_by,
+            )
+            return plot
+
+        logger.die("No plots requested. Please specify required plots or see help (-h)")
 
 
 class PlotGenerator:
-    def __init__(
-        self, spec, normalize, report_dir_path, pdf_report, results_df, logx, logy, split_by
-    ):
+    def __init__(self, spec, normalize, report_dir_path, results_df, logx, logy, split_by):
         self.normalize = normalize
         self.spec = spec
         self.report_dir_path = report_dir_path
-        self.pdf_report = pdf_report
         self.figsize = [12, 8]
 
         self.results_df = results_df
@@ -367,7 +326,7 @@ class PlotGenerator:
                 from_col=ReportVars.FOM_VALUE_MAX.value,
             )
 
-    def draw(self, perf_measure, scale_var, series, y_label=None):
+    def draw(self, perf_measure, scale_var, series, pdf_report, y_label=None):
         series_data = self.output_df.query(f'series == "{series}"').copy()
 
         title = (
@@ -435,9 +394,9 @@ class PlotGenerator:
             fig.tight_layout()
 
         chart_filename = f"strong-scaling_{perf_measure}_vs_{scale_var}_{series}.png"
-        self.write(fig, chart_filename)
+        self.write(fig, chart_filename, pdf_report)
 
-    def draw_filler(self, perf_measure, scale_var, series, exception):
+    def draw_filler(self, perf_measure, scale_var, series, exception, pdf_report):
         # FIXME: DRY THIS
         """Draws a filler figure in cases where a chart cannot be drawn due to errors."""
         title = f"{perf_measure} vs {scale_var} for {series}"
@@ -457,7 +416,7 @@ class PlotGenerator:
         ax.set_title(title)
 
         chart_filename = f"strong-scaling_{perf_measure}_vs_{scale_var}_{series}.png"
-        self.write(fig, chart_filename)
+        self.write(fig, chart_filename, pdf_report)
 
     def validate_spec(self, chart_spec):
         """Validates that the FOMs and variables in the chart spec are in the results data."""
@@ -469,15 +428,15 @@ class PlotGenerator:
                 logger.debug(f"Available options: {self.results_df.loc[:, 'fom_name'].unique()}")
                 logger.die(f"{var} was not found in the results data.")
 
-    def write(self, fig, filename):
+    def write(self, fig, filename, pdf_report):
         filename = filename.replace(" ", "-")
         plt.savefig(os.path.join(self.report_dir_path, filename))
-        self.pdf_report.savefig(fig)
+        pdf_report.savefig(fig)
         plt.close(fig)
 
 
 class ScalingPlotGenerator(PlotGenerator):
-    def generate_plot_data(self):
+    def generate_plot_data(self, pdf_report):
         """Creates a dataframe for plotting line charts with scaling var on x axis,
         and performance variable on y axis."""
         self.validate_spec(self.spec)
@@ -524,7 +483,7 @@ class ScalingPlotGenerator(PlotGenerator):
                     self.normalize_data(series_results, scale_to_index=True)
                 except ArithmeticError as e:
                     logger.warn(e)
-                    self.draw_filler(perf_measure, scale_var, series, e)
+                    self.draw_filler(perf_measure, scale_var, series, e, pdf_report)
                     continue
 
             if series_results.loc[:, ReportVars.FOM_ORIGIN_TYPE.value].iloc[0] == "summary::mean":
@@ -542,7 +501,7 @@ class ScalingPlotGenerator(PlotGenerator):
             series_results = self.add_idealized_data(results, series_results)
             self.output_df = pd.concat([self.output_df, series_results])
 
-            self.draw(perf_measure, scale_var, series)
+            self.draw(perf_measure, scale_var, series, pdf_report)
 
     def add_idealized_data(self, raw_results, selected_data):
         # Skip if no better direction, but override in subclasses when there's a default_better
@@ -618,10 +577,12 @@ class ScalingPlotGenerator(PlotGenerator):
 
 
 class WeakScalingPlot(ScalingPlotGenerator):
-    def draw(self, perf_measure, scale_var, series):
+    plot_type = "weak_scaling"
+
+    def draw(self, perf_measure, scale_var, series, pdf_report):
         y_label = perf_measure
 
-        super().draw(perf_measure, scale_var, series, y_label)
+        super().draw(perf_measure, scale_var, series, pdf_report, y_label)
 
     def add_idealized_data(self, raw_results, selected_data):
         selected_data = super().add_idealized_data(raw_results, selected_data)
@@ -634,6 +595,8 @@ class WeakScalingPlot(ScalingPlotGenerator):
 
 
 class StrongScalingPlot(ScalingPlotGenerator):
+    plot_type = "strong_scaling"
+
     def default_better(self):
         if self.normalize:
             return BetterDirection.HIGHER
@@ -655,14 +618,16 @@ class StrongScalingPlot(ScalingPlotGenerator):
     ):
         super().normalize_data(data, scale_to_index, to_col=to_col, from_col=from_col)
 
-    def draw(self, perf_measure, scale_var, series):
+    def draw(self, perf_measure, scale_var, series, pdf_report):
         y_label = perf_measure
 
-        super().draw(perf_measure, scale_var, series, y_label)
+        super().draw(perf_measure, scale_var, series, pdf_report, y_label)
 
 
 class FomPlot(PlotGenerator):
-    def generate_plot_data(self):
+    plot_type = "foms"
+
+    def generate_plot_data(self, pdf_report):
         results = self.results_df
         all_foms = results.loc[:, ReportVars.FOM_NAME.value].unique()
         for fom in all_foms:
@@ -702,10 +667,10 @@ class FomPlot(PlotGenerator):
 
             perf_measure = fom
             series = "experiment_name"
-            self.draw(perf_measure, scale_var, series, unit)
+            self.draw(perf_measure, scale_var, series, unit, pdf_report)
 
     # TODO: dry bar plot drawing
-    def draw(self, perf_measure, scale_var, series, unit):
+    def draw(self, perf_measure, scale_var, series, unit, pdf_report):
 
         self.output_df[ReportVars.FOM_VALUE.value] = to_numeric_if_possible(
             self.output_df[ReportVars.FOM_VALUE.value]
@@ -738,11 +703,13 @@ class FomPlot(PlotGenerator):
             fig.tight_layout()
 
         chart_filename = f"foms_{perf_measure}_by_experiments.png"
-        self.write(fig, chart_filename)
+        self.write(fig, chart_filename, pdf_report)
 
 
 class ComparisonPlot(PlotGenerator):
-    def draw(self, perf_measure, scale_var, series):
+    plot_type = "comparison"
+
+    def draw(self, perf_measure, scale_var, series, pdf_report):
         ax = self.output_df.plot(kind="bar", figsize=self.figsize)
         fig = ax.get_figure()
 
@@ -756,9 +723,9 @@ class ComparisonPlot(PlotGenerator):
         fig.tight_layout()
 
         chart_filename = f'{"_vs_".join(perf_measure)}_by_{"_and_".join(series)}.png'
-        self.write(fig, chart_filename)
+        self.write(fig, chart_filename, pdf_report)
 
-    def generate_plot_data(self):
+    def generate_plot_data(self, pdf_report):
         # Break out input args into FOMs and dimensions
         foms = []
         dimensions = []
@@ -806,17 +773,15 @@ class ComparisonPlot(PlotGenerator):
         perf_measure = foms
         scale_var = ""
         series = dimensions
-        self.draw(perf_measure, scale_var, series)
+        self.draw(perf_measure, scale_var, series, pdf_report)
 
 
 class MultiLinePlot(ScalingPlotGenerator):
+    plot_type = "multi_line"
     series_to_plot = []
 
     def default_better(self):
-        if self.normalize:
-            return BetterDirection.HIGHER
-        else:
-            return BetterDirection.LOWER
+        return BetterDirection.HIGHER
 
     def normalize_data(
         self,
@@ -832,12 +797,7 @@ class MultiLinePlot(ScalingPlotGenerator):
             from_col=from_col,
         )
 
-    def draw(self, perf_measure, scale_var, series):
-        y_label = perf_measure
-
-        super().draw(perf_measure, scale_var, series, y_label)
-
-    def draw_multiline(self, perf_measure, scale_var, y_label):
+    def draw_multiline(self, perf_measure, scale_var, pdf_report, y_label):
         # TODO: add suffix 'higher/lower is better' to chart title based on better_direction
         title = f"{perf_measure} vs {scale_var}"
         logger.debug(f"Generating plot for {title}")
@@ -891,16 +851,16 @@ class MultiLinePlot(ScalingPlotGenerator):
         ax.set_ylabel(y_label)
         ax.set_xlabel(scale_var)
 
-        chart_filename = f"strong-scaling_{perf_measure}_vs_{scale_var}_all-series.png"
-        self.write(fig, chart_filename)
+        chart_filename = f"multi_line_{perf_measure}_vs_{scale_var}_all-series.png"
+        self.write(fig, chart_filename, pdf_report)
 
-    def generate_plot_data(self):
-        super().generate_plot_data()
+    def generate_plot_data(self, pdf_report):
+        super().generate_plot_data(pdf_report)
 
         perf_measure, scale_var, *additional_vars = self.spec
         y_label = perf_measure
 
-        self.draw_multiline(perf_measure, scale_var, y_label)
+        self.draw_multiline(perf_measure, scale_var, pdf_report, y_label)
 
 
 def get_reports_path():
@@ -924,30 +884,26 @@ def make_report(results_df, ws_name, args):
     report_name = f"{report_base}.{dt}"
     report_dir_path = os.path.join(report_dir_root, report_name)
     fs.mkdirp(report_dir_path)
-    pdf_path = os.path.join(report_dir_path, f"{report_name}.pdf")
 
+    plot_factory = PlotFactory()
+    plot = plot_factory.create_plot_generator(args, report_dir_path, results_df)
+    plot_type = plot.plot_type
+
+    pdf_path = os.path.join(report_dir_path, f"{report_name}.{plot_type}.pdf")
     with PdfPages(pdf_path) as pdf_report:
-
-        plot_factory = PlotFactory()
-        plot_generators = plot_factory.create_plot_generators(
-            args, report_dir_path, pdf_report, results_df
-        )
-
-        if plot_generators:
-            for plot in plot_generators:
-                plot.generate_plot_data()
+        plot.generate_plot_data(pdf_report)
 
     if os.path.isfile(pdf_path):
 
-        # Simlink specific workspace latest file
-        latest_file = f"{report_base}.latest.pdf"
-        latest_path = os.path.join(report_dir_root, latest_file)
-        create_simlink(pdf_path, latest_path)
+        for base in report_base, "reports":
+            # Simlink specific workspace latest file
+            latest_file = f"{base}.latest.pdf"
+            latest_path = os.path.join(report_dir_root, latest_file)
+            create_simlink(pdf_path, latest_path)
 
-        # Also produce a generic known path
-        latest_file = "reports.latest.pdf"
-        latest_path = os.path.join(report_dir_root, latest_file)
-        create_simlink(pdf_path, latest_path)
+            latest_file = f"{base}.{plot_type}.latest.pdf"
+            latest_path = os.path.join(report_dir_root, latest_file)
+            create_simlink(pdf_path, latest_path)
 
         logger.msg(
             "Report generated successfully. A PDF summary is available at:\n" f"    {pdf_path}"

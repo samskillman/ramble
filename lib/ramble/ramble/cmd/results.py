@@ -39,31 +39,46 @@ def setup_parser(subparser):
         action="store",
         help="the workspace to report on",
     )
-    report_parser.add_argument(
+
+    # The plot type should be exclusive, and only one plot type is supported per invocation
+    plot_type_group = report_parser.add_mutually_exclusive_group(required=True)
+    plot_type_group.add_argument(
         "--strong-scaling",
         dest="strong_scaling",
         nargs="+",
-        action="append",
         help="generate a scaling report, requires two args: [y-axis metric] [x-axis metric]"
         "[optional: group by]",
         required=False,
     )
-    report_parser.add_argument(
+    plot_type_group.add_argument(
         "--weak-scaling",
         dest="weak_scaling",
         nargs="+",
-        action="append",
         help="generate a scaling report, requires two args: [y-axis metric] [x-axis metric]"
         "[optional: group by]",
         required=False,
     )
-    report_parser.add_argument(
+    plot_type_group.add_argument(
         "--multi-line",
         dest="multi_line",
         nargs="+",
-        action="append",
         help="generate a scaling report, requires two args: [y-axis metric] [x-axis metric]"
         "[optional: group by]",
+        required=False,
+    )
+    plot_type_group.add_argument(
+        "--compare",
+        dest="compare",
+        nargs="+",
+        help="generate a comparison report, requires at least two args: [FOM 1] [Additional FOMs]"
+        "[optional: group by(s)]",
+        required=False,
+    )
+    plot_type_group.add_argument(
+        "--foms",
+        dest="foms",
+        action="store_true",
+        help="generate a FOM report, showing values of FOMs for each experiment",
         required=False,
     )
     report_parser.add_argument(
@@ -72,22 +87,6 @@ def setup_parser(subparser):
         action="store",
         help="Down select data to plot (useful for complex workspaces with collisions). Takes"
         " pandas query format",
-        required=False,
-    )
-    report_parser.add_argument(
-        "--compare",
-        dest="compare",
-        nargs="+",
-        action="append",
-        help="generate a comparison report, requires at least two args: [FOM 1] [Additional FOMs]"
-        "[optional: group by(s)]",
-        required=False,
-    )
-    report_parser.add_argument(
-        "--foms",
-        dest="foms",
-        action="store_true",
-        help="generate a FOM report, showing values of FOMs for each experiment",
         required=False,
     )
     report_parser.add_argument(
