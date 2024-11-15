@@ -19,7 +19,6 @@ RUN cd /opt &&  \
     wget https://raw.githubusercontent.com/GoogleCloudPlatform/ramble/develop/requirements.txt && \
     wget https://raw.githubusercontent.com/GoogleCloudPlatform/ramble/develop/requirements-dev.txt && \
     python -m pip install -r /opt/requirements-dev.txt
-
 FROM ${BASE_IMG}:${BASE_VER}
 
 COPY --from=builder / /

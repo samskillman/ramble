@@ -1493,10 +1493,9 @@ ramble:
         out_file = os.path.join(self.root, filename_base + file_extension)
         latest_file = os.path.join(self.root, latest_base + file_extension)
 
-        if os.path.islink(latest_file):
-            os.unlink(latest_file)
+        from ramble.util.file_util import create_simlink
 
-        os.symlink(out_file, latest_file)
+        create_simlink(out_file, latest_file)
 
     def dump_results(self, output_formats=["text"], print_results=False, summary_only=False):
         """

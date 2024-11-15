@@ -35,6 +35,7 @@ import ramble.util.path
 
 from ramble.namespace import namespace
 from ramble.util.logger import logger
+from ramble.util.file_util import create_simlink
 
 import spack.util.spack_json as sjson
 from spack.util.executable import which, Executable
@@ -139,7 +140,7 @@ class Pipeline:
         if logger.enabled:
             fs.mkdirp(self.log_dir)
             # Also create simlink to give known paths
-            self.create_simlink(self.log_dir, self.log_dir_latest)
+            create_simlink(self.log_dir, self.log_dir_latest)
 
         if self.suppress_per_experiment_prints and not self.suppress_run_header:
             logger.all_msg(f"  Log files for experiments are stored in: {self.log_dir}")
@@ -222,21 +223,12 @@ class Pipeline:
 
         logger.add_log(self.log_path)
         if logger.enabled:
-            self.create_simlink(self.log_path, self.log_path_latest)
+            create_simlink(self.log_path, self.log_path_latest)
 
         self._prepare()
         self._execute()
         self._complete()
         logger.remove_log()
-
-    def create_simlink(self, base, link):
-        """
-        Create simlink of a file to give a known and predictable path
-        """
-        if os.path.islink(link):
-            os.unlink(link)
-
-        os.symlink(base, link)
 
 
 class AnalyzePipeline(Pipeline):
@@ -410,7 +402,7 @@ class ArchivePipeline(Pipeline):
                     shutil.copyfile(src, dest)
 
         archive_path_latest = os.path.join(self.workspace.archive_dir, "archive.latest")
-        self.create_simlink(archive_path, archive_path_latest)
+        create_simlink(archive_path, archive_path_latest)
 
     def _complete(self):
         if self.create_tar:
@@ -429,7 +421,7 @@ class ArchivePipeline(Pipeline):
                 self.workspace.archive_dir, "archive.latest" + tar_extension
             )
 
-            self.create_simlink(tar_path, tar_path_latest)
+            create_simlink(tar_path, tar_path_latest)
 
             logger.debug(f"Archive url: {archive_url}")
 

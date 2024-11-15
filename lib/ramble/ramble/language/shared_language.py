@@ -10,6 +10,7 @@ import ramble.language.language_base
 import ramble.language.language_helpers
 import ramble.success_criteria
 from ramble.util.logger import logger
+from ramble.util.foms import FomType
 
 
 """This module contains directives directives that are shared between multiple object types
@@ -78,7 +79,15 @@ def figure_of_merit_context(name, regex, output_format):
 
 
 @shared_directive("figures_of_merit")
-def figure_of_merit(name, fom_regex, group_name, log_file="{log_file}", units="", contexts=[]):
+def figure_of_merit(
+    name,
+    fom_regex,
+    group_name,
+    log_file="{log_file}",
+    units="",
+    contexts=[],
+    fom_type: FomType = FomType.UNDEFINED,
+):
     """Adds a figure of merit to track for this object
 
     Defines a new figure of merit.
@@ -92,6 +101,7 @@ def figure_of_merit(name, fom_regex, group_name, log_file="{log_file}", units=""
       contexts (list(str)): List of contexts (defined by
                             figure_of_merit_context) this figure of merit
                             should exist in.
+      fom_type: The type of figure of merit
     """
 
     def _execute_figure_of_merit(obj):
@@ -101,6 +111,7 @@ def figure_of_merit(name, fom_regex, group_name, log_file="{log_file}", units=""
             "group_name": group_name,
             "units": units,
             "contexts": contexts,
+            "fom_type": fom_type,
         }
 
     return _execute_figure_of_merit
