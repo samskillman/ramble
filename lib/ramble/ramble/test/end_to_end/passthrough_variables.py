@@ -82,7 +82,7 @@ def test_disable_passthrough(mutable_config, mutable_mock_workspace_path):
 ramble:
   variables:
    batch_submit: '{execute_experiment}'
-   processes_per_node: -1
+   processes_per_node: 1
   applications:
     hostname:
       workloads:
