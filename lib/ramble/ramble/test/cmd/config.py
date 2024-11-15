@@ -685,7 +685,7 @@ ramble:  # comment
               variables:
                 n_ranks: '1'
                 n_nodes: '1'
-                processors_per_node: '1'
+                processes_per_node: '1'
 """
     with open(filepath, "w") as f:
         f.write(contents)

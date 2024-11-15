@@ -28,9 +28,14 @@ class PyNemo(ExecutableApplication):
     tags("ml-framework", "machine-learning")
 
     executable(
+        "setup_transformer_cache",
+        'bash -c "python3 -c \'from transformers import AutoTokenizer; AutoTokenizer.from_pretrained(\\"gpt2\\")\'"',
+        use_mpi=True,
+    )
+
+    executable(
         "pretraining_exec",
-        'bash -c "cd /opt/NeMo; git rev-parse HEAD; export PYTHONPATH=/opt/NeMo:\${PYTHONPATH}; '
-        "CUDA_VISIBLE_DEVICES={cuda_visible_devices} "
+        'bash -c "cd /opt/NeMo; git rev-parse HEAD; '
         "python3 -u /opt/NeMo/examples/nlp/language_modeling/megatron_gpt_pretraining.py "
         '--config-path={nemo_generated_config_path} --config-name={nemo_generated_config_name}"',
         use_mpi=True,
@@ -50,7 +55,11 @@ class PyNemo(ExecutableApplication):
 
     workload(
         "pretraining",
-        executables=["create_logs", "pretraining_exec"],
+        executables=[
+            "create_logs",
+            "setup_transformer_cache",
+            "pretraining_exec",
+        ],
         inputs=["nemo_fetched_config"],
     )
 
@@ -429,7 +438,7 @@ class PyNemo(ExecutableApplication):
     )
     workload_variable(
         "exp_manager.checkpoint_callback_params.filename",
-        default="megatron_gpt--\{val_loss:.2f\}-\{step\}-\{consumed_samples\}",
+        default=r"megatron_gpt--\{val_loss:.2f\}-\{step\}-\{consumed_samples\}",
         description="Filename for checkpoint params",
         workload_group="pretraining",
     )
@@ -1084,7 +1093,12 @@ class PyNemo(ExecutableApplication):
         workload_group="pretraining",
     )
 
-    processed_log_name = "{experiment_run_dir}/processed_{experiment_name}.out"
+    workload_variable(
+        "processed_log_file",
+        default="{experiment_run_dir}/processed_{experiment_name}.out",
+        description="Path to store processed NeMo output",
+        workload_group="pretraining",
+    )
 
     final_epoch_regex = (
         r"Epoch (?P<epoch_id>[0-9]+):\s+:\s+(?P<pct_complete>[0-9]+)%.*\s+"
@@ -1099,19 +1113,19 @@ class PyNemo(ExecutableApplication):
         "Final Epoch ID",
         fom_regex=final_epoch_regex,
         group_name="epoch_id",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
     )
     figure_of_merit(
         "Final Step ID",
         fom_regex=final_epoch_regex,
         group_name="step_idx",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
     )
     figure_of_merit(
         "Final Elapsed Time",
         fom_regex=final_epoch_regex,
         group_name="elapsed_time",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
     )
     figure_of_merit(
         "Final Elapsed Seconds",
@@ -1123,13 +1137,13 @@ class PyNemo(ExecutableApplication):
         "Final Remaining Time",
         fom_regex=final_epoch_regex,
         group_name="remaining_time",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
     )
     figure_of_merit(
         "Final Step Timing",
         fom_regex=final_epoch_regex,
         group_name="train_step_timing",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
     )
 
     per_epoch_regex = (
@@ -1148,7 +1162,7 @@ class PyNemo(ExecutableApplication):
         "Epoch ID",
         fom_regex=per_epoch_regex,
         group_name="epoch_id",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
         contexts=[epoch_context_name],
     )
     figure_of_merit(
@@ -1156,56 +1170,56 @@ class PyNemo(ExecutableApplication):
         fom_regex=per_epoch_regex,
         group_name="pct_complete",
         units="%",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
         contexts=[epoch_context_name],
     )
     figure_of_merit(
         "Step ID",
         fom_regex=per_epoch_regex,
         group_name="step_idx",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
         contexts=[epoch_context_name],
     )
     figure_of_merit(
         "Elapsed Time",
         fom_regex=per_epoch_regex,
         group_name="elapsed_time",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
         contexts=[epoch_context_name],
     )
     figure_of_merit(
         "Remaining Time",
         fom_regex=per_epoch_regex,
         group_name="remaining_time",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
         contexts=[epoch_context_name],
     )
     figure_of_merit(
         "v_num",
         fom_regex=r"Epoch.*v_num=(?P<v_num>\S+)[,\]]",
         group_name="v_num",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
         contexts=[epoch_context_name],
     )
     figure_of_merit(
         "reduced_train_loss",
         fom_regex=r"Epoch.*reduced_train_loss=(?P<reduced_train_loss>[0-9\.]+)[,\]]",
         group_name="reduced_train_loss",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
         contexts=[epoch_context_name],
     )
     figure_of_merit(
         "global_step",
         fom_regex=r"Epoch.*global_step=(?P<global_step>[0-9\.]+)[,\]]",
         group_name="global_step",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
         contexts=[epoch_context_name],
     )
     figure_of_merit(
         "consumed_samples",
         fom_regex=r"Epoch.*consumed_samples=(?P<consumed_samples>[0-9\.]+)[,\]]",
         group_name="consumed_samples",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
         contexts=[epoch_context_name],
     )
     figure_of_merit(
@@ -1213,8 +1227,15 @@ class PyNemo(ExecutableApplication):
         fom_regex=r"Epoch.*train_step_timing in s=(?P<train_step_time>[0-9\.]+)[,\]]",
         group_name="train_step_time",
         units="s",
-        log_file=processed_log_name,
+        log_file="{processed_log_file}",
         contexts=[epoch_context_name],
+    )
+
+    success_criteria(
+        "training-complete",
+        mode="string",
+        match=".*`Trainer.fit` stopped: `max_steps=.*` reached.",
+        file="{processed_log_file}",
     )
 
     register_phase(
@@ -1361,38 +1382,39 @@ class PyNemo(ExecutableApplication):
 
         final_regex = re.compile(self.final_epoch_regex)
 
-        with open(log_file, "r", encoding="ISO-8859-1") as f:
-            data = f.read()
+        if os.path.exists(log_file):
+            with open(log_file, "r", encoding="ISO-8859-1") as f:
+                data = f.read()
 
-        with open(log_file, "r", encoding="ISO-8859-1") as f:
-            for line in f.readlines():
-                m = final_regex.match(line)
-
-                if m:
-                    timestamp = m.group("elapsed_time")
-
-                    time_parts = timestamp.split(":")
-
-                    part_s = 0
-                    mult = 1
-                    for part in reversed(time_parts):
-                        part_s += int(part) * mult
-                        mult = mult * 60
-                    elapsed_s += part_s
-
-        processed_log = self.expander.expand_var(
-            "{experiment_run_dir}/processed_{experiment_name}.out"
-        )
-
-        with open(processed_log, "w+") as f:
-            f.write(
-                data.replace("\x13", "\n")
-                .replace("\x96\x88", "")
-                .replace("â", "")
+            processed_log = self.expander.expand_var(
+                "{experiment_run_dir}/processed_{experiment_name}.out"
             )
 
-        sec_file_path = self.expander.expand_var(
-            "{experiment_run_dir}/elapsed_seconds"
-        )
-        with open(sec_file_path, "w+") as f:
-            f.write(f"Elapsed seconds: {elapsed_s}")
+            with open(processed_log, "w+") as f:
+                f.write(
+                    data.replace("\x13", "\n")
+                    .replace("\x96\x88", "")
+                    .replace("â", "")
+                )
+
+            with open(processed_log) as f:
+                for line in f.readlines():
+                    m = final_regex.match(line)
+
+                    if m:
+                        timestamp = m.group("elapsed_time")
+
+                        time_parts = timestamp.split(":")
+
+                        part_s = 0
+                        mult = 1
+                        for part in reversed(time_parts):
+                            part_s += int(part) * mult
+                            mult = mult * 60
+                        elapsed_s += part_s
+
+            sec_file_path = self.expander.expand_var(
+                "{experiment_run_dir}/elapsed_seconds"
+            )
+            with open(sec_file_path, "w+") as f:
+                f.write(f"Elapsed seconds: {elapsed_s}")

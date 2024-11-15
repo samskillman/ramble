@@ -51,6 +51,7 @@ subcommands = [
     "info",
     "edit",
     "mirror",
+    "experiment-logs",
     ["list", "ls"],
     ["remove", "rm"],
     "generate-config",
@@ -483,7 +484,7 @@ def workspace_setup(args):
     logger.debug("Setting up workspace")
     pipeline = pipeline_cls(ws, filters)
 
-    with ws.write_transaction():
+    with ws.read_transaction():
         workspace_run_pipeline(args, pipeline)
 
 
@@ -554,7 +555,7 @@ def workspace_analyze(args):
         summary_only=args.summary_only,
     )
 
-    with ws.write_transaction():
+    with ws.read_transaction():
         workspace_run_pipeline(args, pipeline)
 
 
@@ -1291,6 +1292,56 @@ def workspace_generate_config_setup_parser(subparser):
 def workspace_generate_config(args):
     """Generate a configuration file for this ramble workspace"""
     workspace_manage_experiments(args)
+
+
+def workspace_experiment_logs_setup_parser(subparser):
+    """print log information for workspace"""
+    default_filters = subparser.add_mutually_exclusive_group()
+    default_filters.add_argument(
+        "--limit-one", action="store_true", help="only print the first log information block"
+    )
+
+    default_filters.add_argument(
+        "--first-failed",
+        action="store_true",
+        help="only print the information for the first failed experiment. "
+        + "Requires `ramble workspace analyze` to have been run previously",
+    )
+
+    default_filters.add_argument(
+        "--failed", action="store_true", help="print only failed experiment logs"
+    )
+
+    arguments.add_common_arguments(
+        subparser,
+        ["where", "exclude_where", "filter_tags"],
+    )
+
+
+def workspace_experiment_logs(args):
+    """Print log information for workspace"""
+
+    current_pipeline = ramble.pipeline.pipelines.logs
+    ws = ramble.cmd.require_active_workspace(cmd_name="workspace concretize")
+
+    first_only = args.limit_one or args.first_failed
+    where_filter = args.where.copy() if args.where else []
+    exclude_filter = args.exclude_where.copy() if args.exclude_where else []
+    only_failed = args.first_failed or args.failed
+
+    if only_failed:
+        exclude_filter.append(["'{experiment_status}' == 'SUCCESS'"])
+
+    filters = ramble.filters.Filters(
+        include_where_filters=where_filter,
+        exclude_where_filters=exclude_filter,
+        tags=args.filter_tags,
+    )
+
+    pipeline_cls = ramble.pipeline.pipeline_class(current_pipeline)
+    pipeline = pipeline_cls(ws, filters, first_only=first_only)
+    with ws.write_transaction():
+        workspace_run_pipeline(args, pipeline)
 
 
 #: Dictionary mapping subcommand names and aliases to functions

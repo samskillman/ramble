@@ -12,6 +12,7 @@ import os
 import shutil
 import py.path
 import shlex
+import glob
 
 import llnl.util.filesystem as fs
 import llnl.util.tty as tty
@@ -578,6 +579,76 @@ class ExecutePipeline(Pipeline):
             executor(*exec_args)
 
 
+class LogsPipeline(Pipeline):
+    """class for the `logs` pipeline"""
+
+    name = "logs"
+
+    def __init__(
+        self,
+        workspace,
+        filters,
+        first_only=False,
+        suppress_per_experiment_prints=True,
+        suppress_run_header=True,
+    ):
+        super().__init__(workspace, filters)
+        self.action_string = "Getting log information for"
+        self.require_inventory = False
+        self.first_only = first_only
+        self.suppress_per_experiment_prints = suppress_per_experiment_prints
+        self.suppress_run_header = suppress_run_header
+
+    def _execute(self):
+        def print_archive_files(app_inst, pattern_title, patterns):
+            print_header = True
+            if len(patterns) > 0:
+                for pattern in patterns:
+                    exp_pattern = app_inst.expander.expand_var(pattern)
+                    for file in glob.glob(exp_pattern):
+                        # Only print the header if a file matched the glob
+                        if print_header:
+                            logger.all_msg(f"    Archive files from {pattern_title}:")
+                            print_header = False
+                        logger.all_msg(f"    - {file}")
+
+        super()._execute()
+
+        if not self.suppress_run_header:
+            logger.all_msg("Finding log information...")
+
+        for exp, app_inst, idx in self._experiment_set.filtered_experiments(self.filters):
+            if app_inst.is_template:
+                continue
+            if app_inst.repeats.is_repeat_base:
+                continue
+
+            log_file = app_inst.expander.expand_var_name("log_file")
+            logger.all_msg(f"Experiment: {exp}")
+            logger.all_msg(f"    Experiment log file: {log_file}")
+
+            analysis_logs, _, _ = app_inst._analysis_dicts(self.workspace.success_list)
+
+            logger.all_msg("    Auxiliary experiment logs:")
+            for log in analysis_logs:
+                logger.all_msg(f"    - {log}")
+
+            print_archive_files(app_inst, "application", app_inst.archive_patterns.keys())
+            if app_inst.package_manager:
+                pm_name = app_inst.package_manager.name
+                print_archive_files(
+                    app_inst,
+                    f"package manager {pm_name}",
+                    app_inst.package_manager.archive_patterns.keys(),
+                )
+
+            for mod in app_inst._modifier_instances:
+                print_archive_files(app_inst, f"modifier {mod.name}", mod.archive_patterns.keys())
+
+            if self.first_only:
+                break
+
+
 class PushDeploymentPipeline(Pipeline):
     """class for the `prepare-deployment` pipeline"""
 
@@ -703,6 +774,7 @@ pipelines = Enum(
         PushToCachePipeline.name,
         ExecutePipeline.name,
         PushDeploymentPipeline.name,
+        LogsPipeline.name,
     ],
 )
 
@@ -714,6 +786,7 @@ _pipeline_map = {
     pipelines.pushtocache: PushToCachePipeline,
     pipelines.execute: ExecutePipeline,
     pipelines.pushdeployment: PushDeploymentPipeline,
+    pipelines.logs: LogsPipeline,
 }
 
 

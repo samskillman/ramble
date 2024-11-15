@@ -47,17 +47,32 @@ if [ $? != 0 ]; then
     ERROR=1
 fi
 
+export UNIT_TEST_COVERAGE_ADDOPTS=""
+if [[ "$UNIT_TEST_COVERAGE" == "true" ]]; then
+  export UNIT_TEST_COVERAGE_ADDOPTS="--cov --cov-report= --cov-config=pyproject.toml"
+fi
+
+export PYTEST_ADDOPTS=""
+
+N_PROCS=${N_PROCS:-auto}
+# Check if xdist is available
+if python -m pytest -VV 2>&1 | grep xdist; then
+  export PYTEST_ADDOPTS="$PYTEST_ADDOPTS -n $N_PROCS"
+fi
+
 #-----------------------------------------------------------
 # Run unit tests with code coverage
 #-----------------------------------------------------------
-if [ -z $LONG ]; then
-    $coverage_run $(which ramble) unit-test -x --verbose -m "not long"
+
+if [[ "$LONG" == "true" ]]; then
+  $(which ramble) unit-test ${PYTEST_ADDOPTS} -x --verbose ${UNIT_TEST_COVERAGE_ADDOPTS}
 else
-    $coverage_run $(which ramble) unit-test -x --verbose
+  $(which ramble) unit-test ${PYTEST_ADDOPTS} -x --verbose ${UNIT_TEST_COVERAGE_ADDOPTS} -m "not long"
 fi
 if [ $? != 0 ]; then
     ERROR=1
 fi
+
 
 if [ $ERROR == 1 ]; then
     exit 1

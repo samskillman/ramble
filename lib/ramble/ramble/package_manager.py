@@ -36,6 +36,7 @@ class PackageManagerBase(metaclass=PackageManagerMeta):
         "pushdeployment",
         "pushtocache",
         "execute",
+        "logs",
     ]
 
     _spec_groups = [

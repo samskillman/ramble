@@ -1,6 +1,7 @@
-Ramble is a multi-platform experimentation framework to increase exploration
-productivity and improve reproducibility. Ramble is capable of driving software
-installation, acquire input files, configure experiments, and extract results.
+Ramble is a multi-platform experimentation framework that increases exploration
+productivity and improves reproducibility. Ramble is capable of driving
+software installation, acquiring input files, configuring experiments, and
+extracting results.
 It works on Linux, macOS, and many supercomputers.
 
 Ramble can be used to configure a variety of experiments for applications.

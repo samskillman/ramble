@@ -1141,6 +1141,8 @@ ramble:
 
         import ruamel.yaml as yaml
 
+        edited = False
+
         workspace_vars = self.get_workspace_vars()
         apps_dict = self.get_applications().copy()
 
@@ -1219,6 +1221,7 @@ ramble:
             workload_names = [ramble.expander.Expander.expansion_str(workload_name_variable)]
 
         for workload_name in workload_names:
+            edited = True
             if workload_name not in workloads_dict:
                 workloads_dict[workload_name] = syaml.syaml_dict()
                 workloads_dict[workload_name][namespace.experiment] = syaml.syaml_dict()
@@ -1301,11 +1304,11 @@ ramble:
                 if namespace.matrix not in exp_dict:
                     exp_dict[namespace.matrix] = exp_matrix.copy()
 
-        if not self.dry_run:
+        if edited and not self.dry_run:
             ramble.config.config.update_config(
                 namespace.application, apps_dict, scope=self.ws_file_config_scope_name()
             )
-        else:
+        elif edited:
             workspace_dict = self._get_workspace_dict()
             workspace_dict[namespace.ramble][namespace.application] = apps_dict
 
@@ -2018,6 +2021,10 @@ ramble:
         if namespace.application not in workspace_dict[namespace.ramble]:
             workspace_dict[namespace.ramble][namespace.application] = syaml.syaml_dict()
         return workspace_dict[namespace.ramble][namespace.application]
+
+    def read_transaction(self):
+        """Get a read lock context manager for use in a `with` block."""
+        return lk.ReadTransaction(self.txlock, acquire=self._re_read)
 
     def write_transaction(self):
         """Get a write lock context manager for use in a `with` block."""

@@ -910,9 +910,9 @@ class Expander:
         """Evaluate subscript operation in the ast"""
         try:
             operand = self.eval_math(node.value)
-            if not isinstance(operand, str):
-                raise SyntaxError("Currently only string slicing is supported for subscript")
             slice_node = node.slice
+            if not isinstance(operand, str) or not isinstance(slice_node, ast.Slice):
+                raise SyntaxError("Currently only string slicing is supported for subscript")
 
             def _get_with_default(s_node, attr, default):
                 v_node = getattr(s_node, attr)
