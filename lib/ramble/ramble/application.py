@@ -1822,7 +1822,7 @@ class ApplicationBase(metaclass=ApplicationMeta):
         # If repeat_success_strict is true, one failed experiment will fail the whole set
         # If repeat_success_strict is false, any passing experiment will pass the whole set
         repeat_success = False
-        exp_success = []
+        exp_status_list = []
         for exp in repeat_experiments.keys():
             if exp in self.experiment_set.experiments.keys():
                 exp_inst = self.experiment_set.experiments[exp]
@@ -1831,15 +1831,15 @@ class ApplicationBase(metaclass=ApplicationMeta):
             else:
                 continue
 
-            exp_success.append(exp_inst.get_status())
+            exp_status_list.append(exp_inst.get_status())
 
         if workspace.repeat_success_strict:
-            if experiment_status.FAILED.name in exp_success:
+            if experiment_status.FAILED.name in exp_status_list:
                 repeat_success = False
             else:
                 repeat_success = True
         else:
-            if experiment_status.SUCCESS.name in exp_success:
+            if experiment_status.SUCCESS.name in exp_status_list:
                 repeat_success = True
             else:
                 repeat_success = False
@@ -1904,20 +1904,22 @@ class ApplicationBase(metaclass=ApplicationMeta):
 
             summary_foms = []
             if context == _NULL_CONTEXT:
+                # Use the app name as the origin of the FOM
+                summary_origin = self.name
                 n_total_dict = {
                     "value": self.repeats.n_repeats,
                     "units": "repeats",
-                    "origin": list(fom_dict.keys())[0][2],
+                    "origin": summary_origin,
                     "origin_type": "summary::n_total_repeats",
                     "name": "Experiment Summary",
                 }
                 summary_foms.append(n_total_dict)
 
-                # Use the first FOM to count how many successful repeats values are present
+                n_success = exp_status_list.count("SUCCESS")
                 n_success_dict = {
-                    "value": len(list(fom_dict.values())[0]),
+                    "value": n_success,
                     "units": "repeats",
-                    "origin": list(fom_dict.keys())[0][2],
+                    "origin": summary_origin,
                     "origin_type": "summary::n_successful_repeats",
                     "name": "Experiment Summary",
                 }
