@@ -27,6 +27,8 @@ class PyNemo(ExecutableApplication):
 
     tags("ml-framework", "machine-learning")
 
+    archive_pattern("{experiment_run_dir}/{nemo_generated_config_name}")
+
     executable(
         "setup_transformer_cache",
         'bash -c "python3 -c \'from transformers import AutoTokenizer; AutoTokenizer.from_pretrained(\\"gpt2\\")\'"',
