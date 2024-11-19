@@ -281,7 +281,7 @@ _ramble_attributes() {
 }
 
 _ramble_clean() {
-    RAMBLE_COMPREPLY="-h --help -d --downloads -m --misc-cache -p --python-cache -a --all"
+    RAMBLE_COMPREPLY="-h --help -d --downloads -m --misc-cache -p --python-cache -r --reports -a --all"
 }
 
 _ramble_commands() {
