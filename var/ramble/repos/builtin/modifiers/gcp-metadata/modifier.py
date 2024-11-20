@@ -237,6 +237,7 @@ class GcpMetadata(BasicModifier):
         fom_regex=r"(?P<gid>.*)",
         group_name="gid",
         log_file="{experiment_run_dir}/gcp-metadata.main-gid.log",
+        fom_type=FomType.INFO,
     )
 
     # This returns a list of all known gids in the job
@@ -253,6 +254,7 @@ class GcpMetadata(BasicModifier):
         fom_regex=r"(?P<numeric_project_id>\d+)",
         group_name="numeric_project_id",
         log_file="{experiment_run_dir}/gcp-metadata.numeric-project-id.log",
+        fom_type=FomType.INFO,
     )
 
     figure_of_merit(
