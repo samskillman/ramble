@@ -61,7 +61,7 @@ class WorkloadVariable:
 
         print_attrs = ["Description", "Default", "Values"]
 
-        out_str = rucolor.nested_2(f"{indentation}{self.name}:\n")
+        out_str = "\n"
         for print_attr in print_attrs:
             name = print_attr
             if print_attr == "Values":
