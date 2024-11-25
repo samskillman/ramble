@@ -12,6 +12,7 @@ import os
 import shutil
 
 import llnl.util.tty as tty
+import spack.util.spack_yaml as syaml
 
 import ramble.caches
 import ramble.config
@@ -105,12 +106,30 @@ def remove_reports_files():
             logger.die("Will not remove any files")
 
         for root, _, files in os.walk(reports_path, topdown=False):
-            for f in files:
-                fname = os.path.join(root, f)
-                if f.endswith(".pdf") or f.endswith(".png"):
-                    logger.debug(f"Removing {fname}")
-                    os.remove(fname)
+            inventory_file = os.path.join(root, ramble.reports.INVENTORY_FILENAME)
+
+            try:
+                with open(inventory_file) as f:
+                    inventory = syaml.load(f)
+            except FileNotFoundError:
+                continue
+
+            if inventory:
+                for inv_file in inventory["files"]:
+                    if inv_file in files:
+                        fname = os.path.join(root, inv_file)
+                        logger.debug(f"Removing {fname}")
+                        os.remove(fname)
+                logger.debug(f"Removing {inventory_file}")
+                os.remove(inventory_file)
 
             if not os.listdir(root):
                 logger.debug(f"Removing empty directory {root}")
                 os.rmdir(root)
+
+        # Clean up symlinks in root dir
+        for item in os.listdir(reports_path):
+            item_path = os.path.join(reports_path, item)
+            if os.path.islink(item_path):
+                logger.debug(f"Removing {item_path}")
+                os.remove(item_path)
