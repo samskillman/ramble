@@ -366,7 +366,6 @@ def test_repeat_import(mutable_mock_workspace_path):
     where_query = None
     results_df = prepare_data(repeat_results, where_query)
 
-    print(results_df)
     # DF contains only summary exp and not individual repeats
     assert "repeat_exp_1" in results_df.values
     assert "repeat_exp_1.1" not in results_df.values
@@ -382,7 +381,24 @@ def test_repeat_import(mutable_mock_workspace_path):
     assert single_exp_rows["fom_value"].values == [42.0]
 
 
-# TODO: test fom plot
+def test_fom_plot(mutable_mock_workspace_path, tmpdir_factory):
+    report_name = "unit_test"
+    report_dir_path = tmpdir_factory.mktemp(report_name)
+    pdf_path = os.path.join(report_dir_path, f"{report_name}.pdf")
+
+    where_query = None
+    for exp in results["experiments"]:
+        exp.update({"simplified_experiment_namespace": "test_exp"})
+
+    results_df = prepare_data(results, where_query)
+
+    plot = FomPlot(None, False, report_dir_path, results_df, False, False, None)
+    with PdfPages(pdf_path) as pdf_report:
+        plot.generate_plot_data(pdf_report)
+
+    assert os.path.isfile(pdf_path)
+    assert os.path.isfile(os.path.join(report_dir_path, "foms_fom_1_by_experiments.png"))
+
 # TODO: test compare plot
 
 # TODO: test where query
