@@ -189,6 +189,15 @@ def test_register_builtin_app(mutable_mock_apps_repo):
         for builtin in excluded_builtins:
             assert exec_graph.get_node(builtin) is None
 
+        # Test for dependency injection
+        found_prerequisite = False
+        for node in exec_graph.walk():
+            if node.key == "builtin::test_builtin":
+                break
+            if node.key == "builtin::test_builtin_pre":
+                found_prerequisite = True
+        assert found_prerequisite
+
 
 @pytest.mark.parametrize(
     "app", ["basic", "basic-inherited", "input-test", "interleved-env-vars", "register-builtin"]
