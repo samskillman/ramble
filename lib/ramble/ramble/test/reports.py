@@ -399,7 +399,23 @@ def test_fom_plot(mutable_mock_workspace_path, tmpdir_factory):
     assert os.path.isfile(pdf_path)
     assert os.path.isfile(os.path.join(report_dir_path, "foms_fom_1_by_experiments.png"))
 
-# TODO: test compare plot
+
+def test_compare_plot(mutable_mock_workspace_path, tmpdir_factory):
+    report_name = "unit_test"
+    report_dir_path = tmpdir_factory.mktemp(report_name)
+    pdf_path = os.path.join(report_dir_path, f"{report_name}.pdf")
+
+    where_query = None
+    results_df = prepare_data(results, where_query)
+
+    spec = ["fom_1", "n_nodes"]
+    plot = ComparisonPlot(spec, False, report_dir_path, results_df, False, False, None)
+    with PdfPages(pdf_path) as pdf_report:
+        plot.generate_plot_data(pdf_report)
+
+    assert os.path.isfile(pdf_path)
+    assert os.path.isfile(os.path.join(report_dir_path, "fom_1_by_n_nodes.png"))
+
 
 # TODO: test where query
 # TODO: test multiple groupby
