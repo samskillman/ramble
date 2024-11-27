@@ -35,7 +35,7 @@ import ramble.util.path
 
 from ramble.namespace import namespace
 from ramble.util.logger import logger
-from ramble.util.file_util import create_simlink
+from ramble.util.file_util import create_symlink
 
 import spack.util.spack_json as sjson
 from spack.util.executable import which, Executable
@@ -139,8 +139,8 @@ class Pipeline:
 
         if logger.enabled:
             fs.mkdirp(self.log_dir)
-            # Also create simlink to give known paths
-            create_simlink(self.log_dir, self.log_dir_latest)
+            # Also create symlink to give known paths
+            create_symlink(self.log_dir, self.log_dir_latest)
 
         if self.suppress_per_experiment_prints and not self.suppress_run_header:
             logger.all_msg(f"  Log files for experiments are stored in: {self.log_dir}")
@@ -223,7 +223,7 @@ class Pipeline:
 
         logger.add_log(self.log_path)
         if logger.enabled:
-            create_simlink(self.log_path, self.log_path_latest)
+            create_symlink(self.log_path, self.log_path_latest)
 
         self._prepare()
         self._execute()
@@ -402,7 +402,7 @@ class ArchivePipeline(Pipeline):
                     shutil.copyfile(src, dest)
 
         archive_path_latest = os.path.join(self.workspace.archive_dir, "archive.latest")
-        create_simlink(archive_path, archive_path_latest)
+        create_symlink(archive_path, archive_path_latest)
 
     def _complete(self):
         if self.create_tar:
@@ -421,7 +421,7 @@ class ArchivePipeline(Pipeline):
                 self.workspace.archive_dir, "archive.latest" + tar_extension
             )
 
-            create_simlink(tar_path, tar_path_latest)
+            create_symlink(tar_path, tar_path_latest)
 
             logger.debug(f"Archive url: {archive_url}")
 

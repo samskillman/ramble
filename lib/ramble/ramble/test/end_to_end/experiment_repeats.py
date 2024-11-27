@@ -164,7 +164,7 @@ ramble:
         json_results_files = glob.glob(os.path.join(ws1.root, "results*.json"))
         yaml_results_files = glob.glob(os.path.join(ws1.root, "results*.yaml"))
 
-        # Match both the file and the simlink
+        # Match both the file and the symlink
         assert len(text_results_files) == 2
         assert len(json_results_files) == 2
         assert len(yaml_results_files) == 2
