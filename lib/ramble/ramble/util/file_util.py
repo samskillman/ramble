@@ -32,9 +32,9 @@ def is_dry_run_path(path: str) -> bool:
     return str(path).startswith(_DRY_RUN_PATH_PREFIX)
 
 
-def create_simlink(base, link):
+def create_symlink(base, link):
     """
-    Create simlink of a file to give a known and predictable path
+    Create symlink of a file to give a known and predictable path
     """
     if os.path.islink(link):
         os.unlink(link)

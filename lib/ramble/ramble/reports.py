@@ -24,7 +24,7 @@ import ramble.pipeline
 import ramble.util.path
 from ramble.util.foms import BetterDirection, FomType
 from ramble.util.logger import logger
-from ramble.util.file_util import create_simlink
+from ramble.util.file_util import create_symlink
 
 try:
     import matplotlib.pyplot as plt
@@ -917,18 +917,24 @@ def make_report(results_df, ws_name, args):
 
     if os.path.isfile(pdf_path):
         plot.write_inventory()
+        symlinks_created = []
 
         for base in report_base, "reports":
-            # Simlink specific workspace latest file
+            # Symlink specific workspace latest file
             latest_file = f"{base}.latest.pdf"
             latest_path = os.path.join(report_dir_root, latest_file)
-            create_simlink(pdf_path, latest_path)
+            symlinks_created.append(latest_path)
+            create_symlink(pdf_path, latest_path)
 
             latest_file = f"{base}.{plot_type}.latest.pdf"
             latest_path = os.path.join(report_dir_root, latest_file)
-            create_simlink(pdf_path, latest_path)
+            symlinks_created.append(latest_path)
+            create_symlink(pdf_path, latest_path)
 
-        logger.msg(
-            "Report generated successfully. A PDF summary is available at:\n" f"    {pdf_path}"
-        )
-        logger.msg("Individual chart images are available at:\n" f"    {report_dir_path}")
+        logger.all_msg("Report generated successfully. A PDF summary is available at:")
+        logger.all_msg(f"  {pdf_path}")
+        logger.all_msg("Individual chart images are available at:")
+        logger.all_msg(f"  {report_dir_path}")
+        logger.all_msg("Symlinks updated:")
+        for path in symlinks_created:
+            logger.all_msg(f"  {path}")

@@ -1485,17 +1485,15 @@ ramble:
             tty.debug(f"Could not find {insert_before_exp}, appending result to end instead.")
             self.results["experiments"].append(result)
 
-    def simlink_result(self, filename_base, latest_base, file_extension):
+    def symlink_result(self, out_file, latest_file):
         """
-        Create simlink of result file so that results.latest.txt always points
+        Create symlink of result file so that results.latest.txt always points
         to the most recent analysis. This clobbers the existing link
         """
-        out_file = os.path.join(self.root, filename_base + file_extension)
-        latest_file = os.path.join(self.root, latest_base + file_extension)
 
-        from ramble.util.file_util import create_simlink
+        from ramble.util.file_util import create_symlink
 
-        create_simlink(out_file, latest_file)
+        create_symlink(out_file, latest_file)
 
     def dump_results(self, output_formats=["text"], print_results=False, summary_only=False):
         """
@@ -1513,6 +1511,7 @@ ramble:
         results = _filter_results(self.results, summary_only=summary_only)
 
         results_written = []
+        symlinks_updated = []
 
         dt = self.date_string()
         inner_delim = "."
@@ -1523,6 +1522,7 @@ ramble:
 
             file_extension = ".txt"
             out_file = os.path.join(self.root, filename_base + file_extension)
+            latest_file = os.path.join(self.root, latest_base + file_extension)
 
             results_written.append(out_file)
 
@@ -1588,23 +1588,29 @@ ramble:
                 else:
                     logger.msg("No results to write")
 
-            self.simlink_result(filename_base, latest_base, file_extension)
+            symlinks_updated.append(latest_file)
+            self.symlink_result(out_file, latest_file)
 
         if "json" in output_formats:
             file_extension = ".json"
             out_file = os.path.join(self.root, filename_base + file_extension)
+            latest_file = os.path.join(self.root, latest_base + file_extension)
             results_written.append(out_file)
             with open(out_file, "w+") as f:
                 sjson.dump(results, f)
-            self.simlink_result(filename_base, latest_base, file_extension)
+            symlinks_updated.append(latest_file)
+            self.symlink_result(out_file, latest_file)
 
         if "yaml" in output_formats:
             file_extension = ".yaml"
             out_file = os.path.join(self.root, filename_base + file_extension)
+            latest_file = os.path.join(self.root, latest_base + file_extension)
             results_written.append(out_file)
             with open(out_file, "w+") as f:
                 syaml.dump(results, stream=f)
-            self.simlink_result(filename_base, latest_base, file_extension)
+
+            symlinks_updated.append(latest_file)
+            self.symlink_result(out_file, latest_file)
 
         if not results_written:
             logger.die("Results were not written.")
@@ -1612,6 +1618,9 @@ ramble:
         logger.all_msg("Results are written to:")
         for out_file in results_written:
             logger.all_msg(f"  {out_file}")
+        logger.all_msg("Symlinks updated:")
+        for symlink_path in symlinks_updated:
+            logger.all_msg(f"  {symlink_path}")
 
         if print_results:
             with open(results_written[0]) as f:
