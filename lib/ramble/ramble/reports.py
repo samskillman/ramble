@@ -265,7 +265,7 @@ class PlotGenerator:
         self.normalize = normalize
         self.spec = spec
         self.report_dir_path = report_dir_path
-        self.inventory_path = os.path.join(report_dir_path, INVENTORY_FILENAME)
+        self.inventory = {"files": []}
         self.figsize = [12, 8]
 
         self.results_df = results_df
@@ -330,22 +330,20 @@ class PlotGenerator:
                 from_col=ReportVars.FOM_VALUE_MAX.value,
             )
 
+    def get_inventory_path(self):
+        return os.path.join(self.report_dir_path, INVENTORY_FILENAME)
+
     def add_to_inventory(self, filename):
         """Adds a filename to the inventory.
 
         Args:
             filename: filename to add to inventory.
         """
-        try:
-            with open(self.inventory_path) as f:
-                inventory = syaml.load(f)
-        except FileNotFoundError:
-            inventory = {"files": []}
+        self.inventory["files"].append(filename)
 
-        inventory["files"].append(filename)
-
-        with open(self.inventory_path, "w+") as f:
-            syaml.dump(inventory, stream=f)
+    def write_inventory(self):
+        with open(self.get_inventory_path(), "w+") as f:
+            syaml.dump(self.inventory, stream=f)
 
     def draw(self, perf_measure, scale_var, series, pdf_report, y_label=None):
         series_data = self.output_df.query(f'series == "{series}"').copy()
@@ -918,6 +916,7 @@ def make_report(results_df, ws_name, args):
         plot.add_to_inventory(pdf_filename)
 
     if os.path.isfile(pdf_path):
+        plot.write_inventory()
 
         for base in report_base, "reports":
             # Simlink specific workspace latest file
