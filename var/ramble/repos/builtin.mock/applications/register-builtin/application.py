@@ -43,6 +43,10 @@ class RegisterBuiltin(ExecutableApplication):
     # Test disabling the typically included env_vars builtin.
     register_builtin("env_vars", required=False)
     register_builtin("test_builtin", required=True)
+    register_builtin("test_builtin_pre", dependents=["test_builtin"])
 
     def test_builtin(self):
         return ['echo "foo"']
+
+    def test_builtin_pre(self):
+        return ['echo "bar"']

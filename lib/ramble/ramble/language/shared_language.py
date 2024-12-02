@@ -273,7 +273,9 @@ def success_criteria(
 
 
 @shared_directive("builtins")
-def register_builtin(name, required=True, injection_method="prepend", depends_on=[]):
+def register_builtin(
+    name, required=True, injection_method="prepend", depends_on=[], dependents=[]
+):
     """Register a builtin
 
     Builtins are methods that return lists of strings. These methods represent
@@ -308,7 +310,7 @@ def register_builtin(name, required=True, injection_method="prepend", depends_on
     The 'required' attribute marks a builtin as required for all workloads. This
     will ensure the builtin is added to the workload if it is not explicitly
     added. If required builtins are not explicitly added to a workload, they
-    are injected  into the list of executables, based on the injection_method
+    are injected into the list of executables, based on the injection_method
     attribute.
 
     The 'injection_method' attribute controls where the builtin will be
@@ -324,6 +326,8 @@ def register_builtin(name, required=True, injection_method="prepend", depends_on
                                 'prepend' or 'append'
         depends_on (list(str)): The names of builtins this builtin depends on
                                 (and must execute after).
+        dependents (list(str)): The names of builtins that should come
+                                after the current one.
     """
     supported_injection_methods = ["prepend", "append"]
 
@@ -342,6 +346,7 @@ def register_builtin(name, required=True, injection_method="prepend", depends_on
             "required": required,
             "injection_method": injection_method,
             "depends_on": depends_on.copy(),
+            "dependents": dependents.copy(),
         }
 
     return _store_builtin
