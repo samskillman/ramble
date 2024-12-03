@@ -13,6 +13,7 @@ import os
 import re
 
 import llnl.util.filesystem as fs
+import spack.util.spack_yaml as syaml
 
 import ramble.cmd.results
 import ramble.cmd.workspace
@@ -55,6 +56,8 @@ _FOM_DICT_MAPPING = {
     "origin": ReportVars.FOM_ORIGIN.value,
     "origin_type": ReportVars.FOM_ORIGIN_TYPE.value,
 }
+
+INVENTORY_FILENAME = "inventory.yaml"
 
 
 def to_numeric_if_possible(series):
@@ -262,6 +265,7 @@ class PlotGenerator:
         self.normalize = normalize
         self.spec = spec
         self.report_dir_path = report_dir_path
+        self.inventory = {"files": []}
         self.figsize = [12, 8]
 
         self.results_df = results_df
@@ -325,6 +329,21 @@ class PlotGenerator:
                 to_col=ReportVars.FOM_VALUE_MAX.value,
                 from_col=ReportVars.FOM_VALUE_MAX.value,
             )
+
+    def get_inventory_path(self):
+        return os.path.join(self.report_dir_path, INVENTORY_FILENAME)
+
+    def add_to_inventory(self, filename):
+        """Adds a filename to the inventory.
+
+        Args:
+            filename: filename to add to inventory.
+        """
+        self.inventory["files"].append(filename)
+
+    def write_inventory(self):
+        with open(self.get_inventory_path(), "w+") as f:
+            syaml.dump(self.inventory, stream=f)
 
     def draw(self, perf_measure, scale_var, series, pdf_report, y_label=None):
         series_data = self.output_df.query(f'series == "{series}"').copy()
@@ -431,6 +450,7 @@ class PlotGenerator:
     def write(self, fig, filename, pdf_report):
         filename = filename.replace(" ", "-")
         plt.savefig(os.path.join(self.report_dir_path, filename))
+        self.add_to_inventory(filename)
         pdf_report.savefig(fig)
         plt.close(fig)
 
@@ -889,11 +909,14 @@ def make_report(results_df, ws_name, args):
     plot = plot_factory.create_plot_generator(args, report_dir_path, results_df)
     plot_type = plot.plot_type
 
-    pdf_path = os.path.join(report_dir_path, f"{report_name}.{plot_type}.pdf")
+    pdf_filename = f"{report_name}.{plot_type}.pdf"
+    pdf_path = os.path.join(report_dir_path, pdf_filename)
     with PdfPages(pdf_path) as pdf_report:
         plot.generate_plot_data(pdf_report)
+        plot.add_to_inventory(pdf_filename)
 
     if os.path.isfile(pdf_path):
+        plot.write_inventory()
         symlinks_created = []
 
         for base in report_base, "reports":
