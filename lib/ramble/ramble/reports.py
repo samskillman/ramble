@@ -653,7 +653,8 @@ class FomPlot(PlotGenerator):
         for fom in all_foms:
             series_results = results.query(
                 f'fom_name == "{fom}" and (fom_origin_type == "application" or '
-                'fom_origin_type == "modifier" or fom_origin_type == "summary::mean")'
+                'fom_origin_type == "modifier" or fom_origin_type == "summary::mean" or '
+                'fom_origin_type == "summary::n_total_repeats")'
             ).copy()
 
             scale_var = "simplified_experiment_namespace"
