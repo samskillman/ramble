@@ -38,6 +38,7 @@ class PyNemo(ExecutableApplication):
     executable(
         "pretraining_exec",
         'bash -c "cd /opt/NeMo; git rev-parse HEAD; '
+        "{custom_injected_string} "
         "python3 -u /opt/NeMo/examples/nlp/language_modeling/megatron_gpt_pretraining.py "
         '--config-path={nemo_generated_config_path} --config-name={nemo_generated_config_name}"',
         use_mpi=True,
@@ -70,6 +71,13 @@ class PyNemo(ExecutableApplication):
     workload_group("all_workloads", workloads=["pretraining"])
     workload_group("pretraining", workloads=["pretraining"])
     all_workloads = ["pretraining"]
+
+    workload_variable(
+        "custom_injected_string",
+        default="",
+        description="Custom string to inject before pretraining script",
+        workload_group="pretraining",
+    )
 
     workload_variable(
         "model_inputs",
@@ -221,14 +229,6 @@ class PyNemo(ExecutableApplication):
         workloads=all_workloads,
     )
 
-    # Hydra parameters
-    workload_variable(
-        "hydra.searchpath",
-        default=default_config_string,
-        description="Hydra search paths",
-        workload_group="all_workloads",
-    )
-
     # Run parameters
     workload_variable(
         "run.name",
@@ -244,7 +244,7 @@ class PyNemo(ExecutableApplication):
     )
     workload_variable(
         "run.time_limit",
-        default="6-00:00:00",
+        default=default_config_string,
         description="Experiment time limit",
         workload_group="all_workloads",
     )
@@ -294,7 +294,7 @@ class PyNemo(ExecutableApplication):
     )
     workload_variable(
         "trainer.use_distributed_sampler",
-        default=False,
+        default=default_config_string,
         description="Whether distributed sampler is used or not",
         workload_group="pretraining",
     )
@@ -362,7 +362,7 @@ class PyNemo(ExecutableApplication):
     )
     workload_variable(
         "exp_manager.exp_dir",
-        default=None,
+        default=default_config_string,
         description="Experiment directory for exp manager",
         workload_group="pretraining",
     )
@@ -392,13 +392,13 @@ class PyNemo(ExecutableApplication):
     )
     workload_variable(
         "exp_manager.resume_if_exists",
-        default=False,
+        default=default_config_string,
         description="Whether to resume if a checkpoint exists already",
         workload_group="pretraining",
     )
     workload_variable(
         "exp_manager.resume_ignore_no_checkpoint",
-        default=True,
+        default=default_config_string,
         description="Whether to ignore resume if a checkpoint does not exist",
         workload_group="pretraining",
     )
@@ -422,31 +422,31 @@ class PyNemo(ExecutableApplication):
     )
     workload_variable(
         "exp_manager.checkpoint_callback_params.mode",
-        default="min",
+        default=default_config_string,
         description="Mode for callback checkpoint",
         workload_group="pretraining",
     )
     workload_variable(
         "exp_manager.checkpoint_callback_params.always_save_nemo",
-        default=False,
+        default=default_config_string,
         description="Whether nemo is always saved or not",
         workload_group="pretraining",
     )
     workload_variable(
         "exp_manager.checkpoint_callback_params.save_nemo_on_train_end",
-        default=False,
+        default=default_config_string,
         description="Whether nemo is saved at end of training",
         workload_group="pretraining",
     )
     workload_variable(
         "exp_manager.checkpoint_callback_params.filename",
-        default=r"megatron_gpt--\{val_loss:.2f\}-\{step\}-\{consumed_samples\}",
+        default=default_config_string,
         description="Filename for checkpoint params",
         workload_group="pretraining",
     )
     workload_variable(
         "exp_manager.checkpoint_callback_params.model_parallel_size",
-        default="{model.tensor_model_parallel_size}*{model.pipeline_model_parallel_size}",
+        default=default_config_string,
         description="Parallel size",
         workload_group="pretraining",
     )
@@ -458,7 +458,7 @@ class PyNemo(ExecutableApplication):
     )
     workload_variable(
         "exp_manager.step_timing_kwargs.sync_cuda",
-        default=True,
+        default=default_config_string,
         description="Whether CUDA is synced or not",
         workload_group="pretraining",
     )
@@ -538,7 +538,7 @@ class PyNemo(ExecutableApplication):
     )
     workload_variable(
         "model.ffn_hidden_size",
-        default="{4*{model.hidden_size}}",
+        default=default_config_string,
         description="FFN Hidden Size",
         workload_group="pretraining",
     )
@@ -789,42 +789,6 @@ class PyNemo(ExecutableApplication):
         workload_group="pretraining",
     )
     workload_variable(
-        "model.fp8_hybrid",
-        default=default_config_string,
-        description="FP8 Hybrid",
-        workload_group="pretraining",
-    )
-    workload_variable(
-        "model.fp8_margin",
-        default=default_config_string,
-        description="FP8 Margin",
-        workload_group="pretraining",
-    )
-    workload_variable(
-        "model.fp8_interval",
-        default=default_config_string,
-        description="FP8 Interval",
-        workload_group="pretraining",
-    )
-    workload_variable(
-        "model.fp8_amax_history_len",
-        default=default_config_string,
-        description="FP8 Max History Length",
-        workload_group="pretraining",
-    )
-    workload_variable(
-        "model.fp8_amax_compute_algo",
-        default=default_config_string,
-        description="FP8 Max Compute Algorithm",
-        workload_group="pretraining",
-    )
-    workload_variable(
-        "model.fp8_wgrad",
-        default=default_config_string,
-        description="FP8 Wgrad",
-        workload_group="pretraining",
-    )
-    workload_variable(
         "model.ub_tp_comm_overlap",
         default=default_config_string,
         description="UB TP Comm Overlap",
@@ -906,12 +870,6 @@ class PyNemo(ExecutableApplication):
         "model.optim.betas",
         default=default_config_string,
         description="Model optimization betas",
-        workload_group="pretraining",
-    )
-    workload_variable(
-        "model.optim.bucket_cap_mb",
-        default=default_config_string,
-        description="Bucket capacity in MB",
         workload_group="pretraining",
     )
     workload_variable(
@@ -1044,54 +1002,6 @@ class PyNemo(ExecutableApplication):
         "model.data.index_mapping_dir",
         default=default_config_string,
         description="Index Mapping Dir",
-        workload_group="pretraining",
-    )
-    workload_variable(
-        "model.tp_comm_atomic_rs",
-        default=default_config_string,
-        description="Whether to enable TP comm atomic RS or not",
-        workload_group="pretraining",
-    )
-    workload_variable(
-        "model.tp_comm_atomic_ag",
-        default=default_config_string,
-        description="Whether to enable TP comm atomic AG or not",
-        workload_group="pretraining",
-    )
-    workload_variable(
-        "model.context_parallel_size",
-        default=default_config_string,
-        description="Context parallel size",
-        workload_group="pretraining",
-    )
-    workload_variable(
-        "model.sharp",
-        default=default_config_string,
-        description="Whether to enable sharp or not",
-        workload_group="pretraining",
-    )
-    workload_variable(
-        "model.fsdp",
-        default=default_config_string,
-        description="Whether to enable fsdp or not",
-        workload_group="pretraining",
-    )
-    workload_variable(
-        "model.fsdp_grad_reduce_dtype",
-        default=default_config_string,
-        description="Data type for gradient reduction in fsdp",
-        workload_group="pretraining",
-    )
-    workload_variable(
-        "model.fsdp_sharded_checkpoint",
-        default=default_config_string,
-        description="Whether FSDP should use a sharded checkpoint or not",
-        workload_group="pretraining",
-    )
-    workload_variable(
-        "model.fsdp_sharding_strategy",
-        default=default_config_string,
-        description="Sharding strategy for fsdp",
         workload_group="pretraining",
     )
 
